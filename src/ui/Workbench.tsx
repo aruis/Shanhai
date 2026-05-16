@@ -447,6 +447,18 @@ const animalIntentDirectionKeys = [
 ];
 const animalMoveSuccessKeys = ['animalMoveSuccess', 'animal_move_success'];
 const animalMoveBlockedKeys = ['animalMoveBlocked', 'animal_move_blocked'];
+const animalMoveBlockedCapacityKeys = [
+  'animalMoveBlockedCapacity',
+  'animal_move_blocked_capacity',
+];
+const animalMoveBlockedIllegalKeys = [
+  'animalMoveBlockedIllegal',
+  'animal_move_blocked_illegal',
+];
+const animalMoveBlockedEnergyKeys = [
+  'animalMoveBlockedEnergy',
+  'animal_move_blocked_energy',
+];
 
 const adaptSnapshot = (snapshot: EcoSnapshot | null): EcoSnapshot | null => {
   if (!snapshot) return null;
@@ -484,6 +496,15 @@ const adaptSnapshot = (snapshot: EcoSnapshot | null): EcoSnapshot | null => {
       snapshot.animalMoveSuccess ?? pickLayer(snapshot, animalMoveSuccessKeys),
     animalMoveBlocked:
       snapshot.animalMoveBlocked ?? pickLayer(snapshot, animalMoveBlockedKeys),
+    animalMoveBlockedCapacity:
+      snapshot.animalMoveBlockedCapacity ??
+      pickLayer(snapshot, animalMoveBlockedCapacityKeys),
+    animalMoveBlockedIllegal:
+      snapshot.animalMoveBlockedIllegal ??
+      pickLayer(snapshot, animalMoveBlockedIllegalKeys),
+    animalMoveBlockedEnergy:
+      snapshot.animalMoveBlockedEnergy ??
+      pickLayer(snapshot, animalMoveBlockedEnergyKeys),
     hydrologySource:
       snapshot.hydrologySource ?? pickLayer(snapshot, ['hydrologySource']),
     hydrologyInflow:
@@ -1013,6 +1034,18 @@ const buildMetrics = (
     'animalMoveBlocked',
     'blockedAnimalMoves',
   ]);
+  const blockedCapacity = metricValue(sourceMetrics, [
+    'animalMoveBlockedCapacity',
+    'blockedCapacityMoves',
+  ]);
+  const blockedIllegal = metricValue(sourceMetrics, [
+    'animalMoveBlockedIllegal',
+    'blockedIllegalMoves',
+  ]);
+  const blockedEnergy = metricValue(sourceMetrics, [
+    'animalMoveBlockedEnergy',
+    'blockedEnergyMoves',
+  ]);
   const riparianAnimalCount = metricValue(sourceMetrics, [
     'riparianAnimalCount',
     'nearWaterAnimals',
@@ -1151,6 +1184,9 @@ const buildMetrics = (
     { label: 'Grazing', value: formatValue(grazingAnimals ?? '-') },
     { label: 'Animal Moves', value: formatValue(animalMoveSuccesses ?? '-') },
     { label: 'Blocked Moves', value: formatValue(animalMoveBlocked ?? '-') },
+    { label: 'Blocked Capacity', value: formatValue(blockedCapacity ?? '-') },
+    { label: 'Blocked Illegal', value: formatValue(blockedIllegal ?? '-') },
+    { label: 'Blocked Energy', value: formatValue(blockedEnergy ?? '-') },
     { label: 'Riparian Animals', value: formatValue(riparianAnimalCount ?? '-') },
     { label: 'Sheltered Animals', value: formatValue(shelteredAnimalCount ?? '-') },
     { label: 'Riparian Biomass', value: formatMetricNumber(riparianBiomass) },
@@ -1345,6 +1381,27 @@ const buildInspectorValues = (
       value: formatValue(
         firstPresent(workerCell, animalMoveBlockedKeys) ??
           readCell(pickLayer(snapshot, animalMoveBlockedKeys), x, y, width),
+      ),
+    },
+    {
+      label: 'Blocked Cap',
+      value: formatValue(
+        firstPresent(workerCell, animalMoveBlockedCapacityKeys) ??
+          readCell(pickLayer(snapshot, animalMoveBlockedCapacityKeys), x, y, width),
+      ),
+    },
+    {
+      label: 'Blocked Illegal',
+      value: formatValue(
+        firstPresent(workerCell, animalMoveBlockedIllegalKeys) ??
+          readCell(pickLayer(snapshot, animalMoveBlockedIllegalKeys), x, y, width),
+      ),
+    },
+    {
+      label: 'Blocked Energy',
+      value: formatValue(
+        firstPresent(workerCell, animalMoveBlockedEnergyKeys) ??
+          readCell(pickLayer(snapshot, animalMoveBlockedEnergyKeys), x, y, width),
       ),
     },
     {

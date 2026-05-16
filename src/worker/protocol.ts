@@ -52,6 +52,9 @@ export type SimMetrics = {
   grazingAnimals?: number;
   animalMoveSuccesses?: number;
   animalMoveBlocked?: number;
+  animalMoveBlockedCapacity?: number;
+  animalMoveBlockedIllegal?: number;
+  animalMoveBlockedEnergy?: number;
   [key: string]: unknown;
 };
 
@@ -70,6 +73,9 @@ export type SimSnapshot = {
   animalIntentDirection?: unknown;
   animalMoveSuccess?: unknown;
   animalMoveBlocked?: unknown;
+  animalMoveBlockedCapacity?: unknown;
+  animalMoveBlockedIllegal?: unknown;
+  animalMoveBlockedEnergy?: unknown;
   cells?: unknown;
   [key: string]: unknown;
 };

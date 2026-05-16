@@ -26,6 +26,9 @@ export function collectMetrics(state: SimState): Metrics {
   let grazingAnimals = 0;
   let animalMoveSuccesses = 0;
   let animalMoveBlocked = 0;
+  let animalMoveBlockedCapacity = 0;
+  let animalMoveBlockedIllegal = 0;
+  let animalMoveBlockedEnergy = 0;
   let dryCells = 0;
   let wetCells = 0;
   let riverCells = 0;
@@ -57,6 +60,9 @@ export function collectMetrics(state: SimState): Metrics {
     animalGrazing += state.animalGrazing[i] ?? 0;
     animalMoveSuccesses += state.animalMoveSuccess[i] ?? 0;
     animalMoveBlocked += state.animalMoveBlocked[i] ?? 0;
+    animalMoveBlockedCapacity += state.animalMoveBlockedCapacity[i] ?? 0;
+    animalMoveBlockedIllegal += state.animalMoveBlockedIllegal[i] ?? 0;
+    animalMoveBlockedEnergy += state.animalMoveBlockedEnergy[i] ?? 0;
     switch (state.animalIntentType[i]) {
       case AnimalIntentType.SEEK_WATER:
         seekingWaterAnimals += state.animalCount[i] || 1;
@@ -123,6 +129,9 @@ export function collectMetrics(state: SimState): Metrics {
     grazingAnimals,
     animalMoveSuccesses,
     animalMoveBlocked,
+    animalMoveBlockedCapacity,
+    animalMoveBlockedIllegal,
+    animalMoveBlockedEnergy,
     riparianAnimalCount: grassland.riparianAnimalCount,
     shelteredAnimalCount: grassland.shelteredAnimalCount,
     herbToWoodyRatio: ratio(herbCells, woodyCells),

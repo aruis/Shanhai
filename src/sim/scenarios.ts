@@ -51,6 +51,9 @@ function makeState(name: string, seed: number): SimState {
     animalIntentDirection: new Int8Array(size).fill(-1),
     animalMoveSuccess: new Uint16Array(size),
     animalMoveBlocked: new Uint16Array(size),
+    animalMoveBlockedCapacity: new Uint16Array(size),
+    animalMoveBlockedIllegal: new Uint16Array(size),
+    animalMoveBlockedEnergy: new Uint16Array(size),
     flow: new Float64Array(size),
     hydrologySource: new Float64Array(size),
     hydrologyInflow: new Float64Array(size),
@@ -421,6 +424,9 @@ function rebuildAnimalLayers(state: SimState): void {
   state.animalIntentDirection.fill(-1);
   state.animalMoveSuccess.fill(0);
   state.animalMoveBlocked.fill(0);
+  state.animalMoveBlockedCapacity.fill(0);
+  state.animalMoveBlockedIllegal.fill(0);
+  state.animalMoveBlockedEnergy.fill(0);
 
   for (const animal of state.animals) {
     if (!animal.alive) continue;

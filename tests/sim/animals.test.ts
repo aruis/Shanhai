@@ -151,6 +151,48 @@ describe("M4.2 animal behavior explainability validation", () => {
   });
 });
 
+describe("M4.3 animal blocked-move diagnostics", () => {
+  it("splits blocked movement into capacity, illegal target, and energy causes", () => {
+    const sim = createSimulation(FOOTHILL_SHELTER, {
+      ...stableDefaultParams,
+      animalCellCapacity: 0,
+      animalMoveCost: 5,
+    });
+
+    sim.step();
+    let metrics = sim.metrics();
+
+    expect(metrics.animalMoveBlocked).toBeGreaterThan(0);
+    expect(metrics.animalMoveBlockedCapacity).toBe(metrics.animalMoveBlocked);
+    expect(metrics.animalMoveBlockedIllegal).toBe(0);
+    expect(metrics.animalMoveBlockedEnergy).toBe(0);
+    expect(sum(sim.state.animalMoveBlockedCapacity)).toBe(metrics.animalMoveBlockedCapacity);
+
+    const energySim = createSimulation(FOOTHILL_SHELTER, {
+      ...stableDefaultParams,
+      animalCellCapacity: 8,
+      animalMoveCost: 5,
+    });
+    for (const animal of energySim.state.animals) {
+      animal.energy = 0.05;
+      animal.thirst = stableDefaultParams.animalThirstMax;
+    }
+
+    energySim.step();
+    metrics = energySim.metrics();
+
+    expect(metrics.animalMoveBlocked).toBeGreaterThan(0);
+    expect(metrics.animalMoveBlockedEnergy).toBeGreaterThan(0);
+    expect(metrics.animalMoveBlockedCapacity).toBe(0);
+    expect(metrics.animalMoveBlockedIllegal).toBe(0);
+    expect(metrics.animalMoveBlocked).toBe(
+      metrics.animalMoveBlockedCapacity +
+        metrics.animalMoveBlockedIllegal +
+        metrics.animalMoveBlockedEnergy,
+    );
+  });
+});
+
 function sum(values: ArrayLike<number>): number {
   let total = 0;
   for (let i = 0; i < values.length; i++) total += values[i];

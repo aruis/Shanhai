@@ -73,6 +73,9 @@ export interface SimState {
   animalIntentDirection: Int8Array;
   animalMoveSuccess: Uint16Array;
   animalMoveBlocked: Uint16Array;
+  animalMoveBlockedCapacity: Uint16Array;
+  animalMoveBlockedIllegal: Uint16Array;
+  animalMoveBlockedEnergy: Uint16Array;
   flow: Float64Array;
   hydrologySource: Float64Array;
   hydrologyInflow: Float64Array;
@@ -211,6 +214,9 @@ export interface Metrics {
   grazingAnimals: number;
   animalMoveSuccesses: number;
   animalMoveBlocked: number;
+  animalMoveBlockedCapacity: number;
+  animalMoveBlockedIllegal: number;
+  animalMoveBlockedEnergy: number;
   riparianAnimalCount: number;
   shelteredAnimalCount: number;
   herbToWoodyRatio: number;

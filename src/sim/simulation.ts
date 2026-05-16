@@ -41,6 +41,9 @@ export interface SimSnapshot {
   animalIntentDirection: Int8Array;
   animalMoveSuccess: Uint16Array;
   animalMoveBlocked: Uint16Array;
+  animalMoveBlockedCapacity: Uint16Array;
+  animalMoveBlockedIllegal: Uint16Array;
+  animalMoveBlockedEnergy: Uint16Array;
   F: Float64Array;
   hydrologySource: Float64Array;
   hydrologyInflow: Float64Array;
@@ -132,6 +135,9 @@ export function createSimulation(
         animalIntentDirection: state.animalIntentDirection,
         animalMoveSuccess: state.animalMoveSuccess,
         animalMoveBlocked: state.animalMoveBlocked,
+        animalMoveBlockedCapacity: state.animalMoveBlockedCapacity,
+        animalMoveBlockedIllegal: state.animalMoveBlockedIllegal,
+        animalMoveBlockedEnergy: state.animalMoveBlockedEnergy,
         F: state.flow,
         hydrologySource: state.hydrologySource,
         hydrologyInflow: state.hydrologyInflow,
@@ -188,6 +194,9 @@ export function createSimulation(
         animalIntentDirection: state.animalIntentDirection[i],
         animalMoveSuccess: state.animalMoveSuccess[i],
         animalMoveBlocked: state.animalMoveBlocked[i],
+        animalMoveBlockedCapacity: state.animalMoveBlockedCapacity[i],
+        animalMoveBlockedIllegal: state.animalMoveBlockedIllegal[i],
+        animalMoveBlockedEnergy: state.animalMoveBlockedEnergy[i],
         flow: state.flow[i],
         hydrologySource: state.hydrologySource[i],
         hydrologyInflow: state.hydrologyInflow[i],

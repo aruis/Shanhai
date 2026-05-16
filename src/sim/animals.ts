@@ -20,6 +20,9 @@ export function stepAnimals(state: SimState, params: Params): SimState {
   const intentDirection = new Int8Array(state.nutrient.length).fill(-1);
   const moveSuccess = new Uint16Array(state.nutrient.length);
   const moveBlocked = new Uint16Array(state.nutrient.length);
+  const blockedCapacity = new Uint16Array(state.nutrient.length);
+  const blockedIllegal = new Uint16Array(state.nutrient.length);
+  const blockedEnergy = new Uint16Array(state.nutrient.length);
   const intents: Intent[] = [];
 
   for (const animal of state.animals) {
@@ -50,10 +53,30 @@ export function stepAnimals(state: SimState, params: Params): SimState {
     intents.push(intent);
   }
 
-  arbitrateMovement(state, params, intents, moveSuccess, moveBlocked);
+  arbitrateMovement(
+    state,
+    params,
+    intents,
+    moveSuccess,
+    moveBlocked,
+    blockedCapacity,
+    blockedIllegal,
+    blockedEnergy,
+  );
   settleDrinkAndGraze(state, params, deathReturns, deaths, grazing);
   commitDeathReturns(state, params, deathReturns);
-  rebuildAnimalLayers(state, deaths, grazing, intentType, intentDirection, moveSuccess, moveBlocked);
+  rebuildAnimalLayers(
+    state,
+    deaths,
+    grazing,
+    intentType,
+    intentDirection,
+    moveSuccess,
+    moveBlocked,
+    blockedCapacity,
+    blockedIllegal,
+    blockedEnergy,
+  );
   state.animals = state.animals.filter((animal) => animal.alive);
   return state;
 }
@@ -155,6 +178,9 @@ function arbitrateMovement(
   intents: Intent[],
   moveSuccess: Uint16Array,
   moveBlocked: Uint16Array,
+  blockedCapacity: Uint16Array,
+  blockedIllegal: Uint16Array,
+  blockedEnergy: Uint16Array,
 ): void {
   const current = new Uint16Array(state.animalCount.length);
   const outgoing = new Uint16Array(state.animalCount.length);
@@ -175,12 +201,14 @@ function arbitrateMovement(
     const animal = intent.animal;
     if (!animal.alive || !isAnimalHabitat(state, intent.target)) {
       moveBlocked[animal.index]++;
+      blockedIllegal[animal.index]++;
       continue;
     }
 
     const stayingAtTarget = Math.max(0, current[intent.target] - outgoing[intent.target]);
     if (stayingAtTarget + accepted[intent.target] >= params.animalCellCapacity) {
       moveBlocked[animal.index]++;
+      blockedCapacity[animal.index]++;
       continue;
     }
 
@@ -190,6 +218,7 @@ function arbitrateMovement(
     animal.energy = clamp(animal.energy - moveCost, 0, params.animalEnergyMax);
     if (animal.energy <= 0) {
       moveBlocked[animal.index]++;
+      blockedEnergy[animal.index]++;
       continue;
     }
     moveSuccess[animal.index]++;
@@ -284,6 +313,9 @@ function rebuildAnimalLayers(
   intentDirection: Int8Array = new Int8Array(state.animalCount.length).fill(-1),
   moveSuccess: Uint16Array = new Uint16Array(state.animalCount.length),
   moveBlocked: Uint16Array = new Uint16Array(state.animalCount.length),
+  blockedCapacity: Uint16Array = new Uint16Array(state.animalCount.length),
+  blockedIllegal: Uint16Array = new Uint16Array(state.animalCount.length),
+  blockedEnergy: Uint16Array = new Uint16Array(state.animalCount.length),
 ): void {
   state.animalCount.fill(0);
   state.animalEnergy.fill(0);
@@ -294,6 +326,9 @@ function rebuildAnimalLayers(
   state.animalIntentDirection = intentDirection;
   state.animalMoveSuccess = moveSuccess;
   state.animalMoveBlocked = moveBlocked;
+  state.animalMoveBlockedCapacity = blockedCapacity;
+  state.animalMoveBlockedIllegal = blockedIllegal;
+  state.animalMoveBlockedEnergy = blockedEnergy;
 
   for (const animal of state.animals) {
     if (!animal.alive) continue;

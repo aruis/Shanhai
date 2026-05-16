@@ -18,9 +18,9 @@ The current prototype focuses on the hydrology-to-grass ecology loop:
 
 ## Current Milestone
 
-### M4.2: Animal Behavior Explainability
+### M4.3: Animal Movement Diagnostics
 
-M2 hydrology-to-grass behavior is implemented and protected by validation coverage. M3 added woody plants and a stable foothill shelter scenario. M4 now has one local-vision herbivore population in `foothillShelter`; M4.2 makes that behavior inspectable:
+M2 hydrology-to-grass behavior is implemented and protected by validation coverage. M3 added woody plants and a stable foothill shelter scenario. M4 now has one local-vision herbivore population in `foothillShelter`; M4.3 makes movement failure diagnosable:
 
 - per-cell hydrology budget inspection
 - flow direction arrows
@@ -36,13 +36,14 @@ M2 hydrology-to-grass behavior is implemented and protected by validation covera
 - M3.2 foothill shelter validation for deterministic setup, woody persistence across repeated winters, non-explosive low-hill woody coverage, persistent riparian grass, and non-negative animal-prep shelter metrics
 - M4.1 herbivores with per-individual energy/thirst, 8-neighbor movement, local drinking, grazing, movement arbitration, death nutrient return, animal density rendering, animal metrics, and deterministic survival tests
 - M4.2 animal behavior explanation layers for intent type, intent direction, movement success, and blocked movement, with UI arrows, inspector fields, behavior metrics, and deterministic tests for thirst, hunger, and winter shelter behavior
+- M4.3 blocked-move diagnostics split capacity, illegal-target, and energy-exhaustion causes into separate layers, metrics, inspector fields, and validation coverage
 
 ## Roadmap
 
 - **M1 Hydrology Debug Workbench:** make water behavior observable, tunable, and testable. Done.
 - **M2 Moisture, Nutrients, and Herbaceous Plants:** add soil moisture, nutrients, river-valley enrichment, grass growth, seeding, winter die-off, and nutrient return. Validation coverage is in place.
 - **M3 Woody Plants and Terrain Zoning:** add slow-growing woody plants, low-hill forest bands, plant competition, and stable foothill shelter signals for future animals. M3.2 is complete.
-- **M4 Animal Survival:** add local herbivore movement, thirst, hunger, grazing, death, nutrient return, and behavior debugging. M4.2 implements behavior intent layers and visualization; fine-grained blocked-reason categories are still pending.
+- **M4 Animal Survival:** add local herbivore movement, thirst, hunger, grazing, death, nutrient return, and behavior debugging. M4.3 implements behavior intent layers plus blocked-reason diagnostics; reproduction remains in M5.
 - **M5 Reproduction and Seasonal Population Cycles:** add age, sex, reproduction cooldown, autumn energy storage, winter shelter, and population oscillation metrics.
 
 ## Validation Scenarios
