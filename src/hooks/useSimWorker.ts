@@ -105,6 +105,10 @@ export const useSimWorker = (
     });
   }, []);
 
+  const clearMetricsHistory = useCallback(() => {
+    setMetricsHistory([]);
+  }, []);
+
   useEffect(() => {
     const worker = new Worker(new URL("../worker/simWorker.ts", import.meta.url), {
       type: "module",
@@ -173,33 +177,41 @@ export const useSimWorker = (
 
   const commands = useMemo<SimWorkerCommands>(
     () => ({
-      init: (nextScenario?: ScenarioConfig, nextParams?: SimParams) =>
+      init: (nextScenario?: ScenarioConfig, nextParams?: SimParams) => {
+        clearMetricsHistory();
         postMessage({
           type: "init",
           scenario: nextScenario,
           params: nextParams,
           speed,
-        }),
-      reset: (nextScenario?: ScenarioConfig, nextParams?: SimParams) =>
+        });
+      },
+      reset: (nextScenario?: ScenarioConfig, nextParams?: SimParams) => {
+        clearMetricsHistory();
         postMessage({
           type: "reset",
           scenario: nextScenario,
           params: nextParams,
-        }),
+        });
+      },
       step: (steps = 1) => postMessage({ type: "step", steps }),
       play: (nextSpeed?: number) =>
         postMessage({ type: "play", speed: nextSpeed }),
       pause: () => postMessage({ type: "pause" }),
       setSpeed: (nextSpeed: number) =>
         postMessage({ type: "setSpeed", speed: nextSpeed }),
-      setScenario: (nextScenario: ScenarioConfig, nextParams?: SimParams) =>
+      setScenario: (nextScenario: ScenarioConfig, nextParams?: SimParams) => {
+        clearMetricsHistory();
         postMessage({
           type: "setScenario",
           scenario: nextScenario,
           params: nextParams,
-        }),
-      updateParams: (nextParams: SimParams) =>
-        postMessage({ type: "updateParams", params: nextParams }),
+        });
+      },
+      updateParams: (nextParams: SimParams) => {
+        clearMetricsHistory();
+        postMessage({ type: "updateParams", params: nextParams });
+      },
       selectCell: (selection: CellSelection | null) => {
         if (!selection) {
           postMessage({ type: "selectCell", x: null, y: null });
@@ -214,7 +226,7 @@ export const useSimWorker = (
       },
       requestSnapshot: () => postMessage({ type: "requestSnapshot" }),
     }),
-    [postMessage, speed],
+    [clearMetricsHistory, postMessage, speed],
   );
 
   return {

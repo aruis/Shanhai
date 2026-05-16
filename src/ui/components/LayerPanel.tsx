@@ -20,7 +20,7 @@ const layerLabels: Array<[keyof WorkbenchLayerState, string]> = [
   ['water', 'Water'],
   ['moisture', 'Moisture'],
   ['nutrient', 'Nutrient'],
-  ['plants', 'Plants'],
+  ['plants', 'Grass'],
   ['flow', 'Flow'],
   ['flowArrows', 'Flow arrows'],
   ['components', 'Components'],

@@ -3,6 +3,7 @@ export * from "./indexing";
 export * from "./params";
 export * from "./scenarios";
 export * from "./hydrology";
+export * from "./nutrients";
 export * from "./plants";
 export * from "./metrics";
 export * from "./simulation";

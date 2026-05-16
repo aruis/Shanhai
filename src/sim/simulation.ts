@@ -1,4 +1,5 @@
 import { seasonForTick, stepHydrology } from "./hydrology";
+import { stepNutrients } from "./nutrients";
 import { stableDefaultParams } from "./params";
 import { stepPlants } from "./plants";
 import { scenarios, ScenarioName } from "./scenarios";
@@ -82,6 +83,7 @@ export function createSimulation(
     step(ticks = 1) {
       for (let i = 0; i < ticks; i++) {
         stepHydrology(state, resolvedParams);
+        stepNutrients(state, resolvedParams);
         stepPlants(state, resolvedParams);
       }
       return state;

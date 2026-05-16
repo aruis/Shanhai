@@ -105,6 +105,8 @@ export interface Params {
   lakeSpillMax: number;
   moistureMax: number;
   nutrientMax: number;
+  riparianMoistureGain: number;
+  riparianNutrientGain: number;
   herbBiomassMax: number;
   herbGrowMoistureMin: number;
   herbGrowNutrientMin: number;

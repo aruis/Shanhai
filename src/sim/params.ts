@@ -43,6 +43,8 @@ export const stableDefaultParams: Params = {
   lakeSpillMax: 1.4,
   moistureMax: 1.2,
   nutrientMax: 1.5,
+  riparianMoistureGain: 0.003,
+  riparianNutrientGain: 0.0008,
   herbBiomassMax: 1,
   herbGrowMoistureMin: 0.02,
   herbGrowNutrientMin: 0.035,

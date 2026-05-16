@@ -10,6 +10,7 @@ The current prototype focuses on the hydrology-to-grass ecology loop:
 - ocean sink, evaporation, and seepage
 - river and lake emergence
 - soil moisture and nutrients
+- riparian moisture and nutrient enrichment around rivers and lakes
 - herbaceous growth, seeding, and winter die-off
 - fixed validation scenarios
 - PixiJS grid visualization
@@ -27,12 +28,13 @@ The current milestone turns the water model into the first ecological feedback l
 - hydrology parameter presets
 - moisture, nutrient, and plant visualization layers
 - metric history curves for water, moisture, nutrients, and herb biomass
+- metric history reset when switching scenarios or parameter presets
 - deterministic hydrology and plant validation tests
 
 ## Roadmap
 
 - **M1 Hydrology Debug Workbench:** make water behavior observable, tunable, and testable. Done.
-- **M2 Moisture, Nutrients, and Herbaceous Plants:** add soil moisture, nutrients, grass growth, seeding, winter die-off, and nutrient return. In progress.
+- **M2 Moisture, Nutrients, and Herbaceous Plants:** add soil moisture, nutrients, river-valley enrichment, grass growth, seeding, winter die-off, and nutrient return. In progress.
 - **M3 Woody Plants and Terrain Zoning:** add slow-growing woody plants, low-hill forest bands, and plant competition.
 - **M4 Animal Survival:** add local herbivore movement, thirst, hunger, grazing, death, and nutrient return.
 - **M5 Reproduction and Seasonal Population Cycles:** add age, sex, reproduction cooldown, autumn energy storage, winter shelter, and population oscillation metrics.

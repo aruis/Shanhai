@@ -69,8 +69,8 @@ const initialLayers: LayerState = {
   height: true,
   surface: true,
   water: true,
-  flow: true,
-  moisture: false,
+  flow: false,
+  moisture: true,
   nutrient: false,
   plants: true,
   flowArrows: true,
@@ -627,17 +627,17 @@ const buildMetrics = (
     { label: 'Season', value: formatValue(snapshot?.season ?? '-') },
     { label: 'Avg Water', value: water === null ? '-' : water.toFixed(3) },
     {
-      label: 'Moisture',
+      label: 'Avg Moisture',
       value: moisture === null ? '-' : moisture.toFixed(3),
     },
     {
-      label: 'Nutrient',
+      label: 'Avg Nutrient',
       value: nutrient === null ? '-' : nutrient.toFixed(3),
     },
     { label: 'Avg Flow', value: flow === null ? '-' : flow.toFixed(3) },
-    { label: 'Herbs', value: formatValue(herbCells ?? '-') },
+    { label: 'Grass Cells', value: formatValue(herbCells ?? '-') },
     {
-      label: 'Herb Biomass',
+      label: 'Grass Biomass',
       value: herbBiomass === null ? '-' : herbBiomass.toFixed(1),
     },
     {
@@ -707,21 +707,21 @@ const buildInspectorValues = (
       ),
     },
     {
-      label: 'M',
+      label: 'Moisture',
       value: formatValue(
         firstPresent(workerCell, moistureKeys) ??
           readCell(pickLayer(snapshot, moistureKeys), x, y, width),
       ),
     },
     {
-      label: 'N',
+      label: 'Nutrient',
       value: formatValue(
         firstPresent(workerCell, nutrientKeys) ??
           readCell(pickLayer(snapshot, nutrientKeys), x, y, width),
       ),
     },
     {
-      label: 'Plant',
+      label: 'Grass',
       value: formatValue(
         firstPresent(workerCell, plantTypeKeys) ??
           readCell(pickLayer(snapshot, plantTypeKeys), x, y, width),
