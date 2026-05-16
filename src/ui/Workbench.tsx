@@ -63,6 +63,7 @@ const scenarios = [
   { id: 'slopeToOcean', label: 'Slope to Ocean' },
   { id: 'basinLake', label: 'Closed Basin' },
   { id: 'basinSpill', label: 'Basin Spillway' },
+  { id: 'riverValleyGrassland', label: 'River Valley Grassland' },
 ];
 
 const initialLayers: LayerState = {
@@ -497,6 +498,130 @@ const isActivePlantValue = (value: unknown) => {
   return key !== '' && key !== 'none' && key !== 'empty' && key !== 'bare';
 };
 
+const isPlantableLand = (
+  snapshot: EcoSnapshot,
+  x: number,
+  y: number,
+  width: number,
+) => {
+  const base = Number(readCell(snapshot.B, x, y, width));
+  const surface = Number(readCell(snapshot.S, x, y, width));
+  return (
+    (base === 1 || base === 2) &&
+    surface !== 2 &&
+    surface !== 3
+  );
+};
+
+const distanceToNearestWater = (
+  x: number,
+  y: number,
+  waterCells: Array<{ x: number; y: number }>,
+) => {
+  let nearest = Number.POSITIVE_INFINITY;
+  for (const cell of waterCells) {
+    nearest = Math.min(
+      nearest,
+      Math.max(Math.abs(x - cell.x), Math.abs(y - cell.y)),
+    );
+    if (nearest <= 1) break;
+  }
+  return nearest;
+};
+
+const regionAverage = (
+  indexes: number[],
+  width: number,
+  moistureLayer: MatrixLayer,
+  nutrientLayer: MatrixLayer,
+  biomassLayer: MatrixLayer,
+) => {
+  if (!indexes.length) {
+    return { count: 0, moisture: null, nutrient: null, biomass: null };
+  }
+
+  let moisture = 0;
+  let nutrient = 0;
+  let biomass = 0;
+  let moistureCount = 0;
+  let nutrientCount = 0;
+  let biomassCount = 0;
+
+  for (const index of indexes) {
+    const x = index % width;
+    const y = Math.floor(index / width);
+    const moistureValue = Number(readCell(moistureLayer, x, y, width));
+    const nutrientValue = Number(readCell(nutrientLayer, x, y, width));
+    const biomassValue = Number(readCell(biomassLayer, x, y, width));
+
+    if (Number.isFinite(moistureValue)) {
+      moisture += moistureValue;
+      moistureCount += 1;
+    }
+    if (Number.isFinite(nutrientValue)) {
+      nutrient += nutrientValue;
+      nutrientCount += 1;
+    }
+    if (Number.isFinite(biomassValue)) {
+      biomass += biomassValue;
+      biomassCount += 1;
+    }
+  }
+
+  return {
+    count: indexes.length,
+    moisture: moistureCount ? moisture / moistureCount : null,
+    nutrient: nutrientCount ? nutrient / nutrientCount : null,
+    biomass: biomassCount ? biomass / biomassCount : null,
+  };
+};
+
+const buildGrasslandSignal = (snapshot: EcoSnapshot | null) => {
+  if (!snapshot) return null;
+  const width = snapshot.width ?? 64;
+  const height = snapshot.height ?? 64;
+  const moistureLayer = snapshot.M ?? snapshot.moisture;
+  const nutrientLayer = snapshot.N ?? snapshot.nutrient;
+  const biomassLayer = snapshot.plantBiomass;
+  const grassLayer = snapshot.plantType ?? snapshot.plantBiomass;
+  if (!snapshot.B || !snapshot.S || !grassLayer) return null;
+
+  const waterCells: Array<{ x: number; y: number }> = [];
+  for (let y = 0; y < height; y += 1) {
+    for (let x = 0; x < width; x += 1) {
+      const surface = Number(readCell(snapshot.S, x, y, width));
+      if (surface === 2 || surface === 3) waterCells.push({ x, y });
+    }
+  }
+
+  let plantableCells = 0;
+  let grassCells = 0;
+  const riparian: number[] = [];
+  const far: number[] = [];
+
+  for (let y = 0; y < height; y += 1) {
+    for (let x = 0; x < width; x += 1) {
+      if (!isPlantableLand(snapshot, x, y, width)) continue;
+      plantableCells += 1;
+      const index = y * width + x;
+      if (isActivePlantValue(readCell(grassLayer, x, y, width))) grassCells += 1;
+      if (!waterCells.length) continue;
+
+      const distance = distanceToNearestWater(x, y, waterCells);
+      if (distance === 1) riparian.push(index);
+      else if (distance >= 6) far.push(index);
+    }
+  }
+
+  return {
+    plantableCells,
+    grassCells,
+    grassCoverage: plantableCells ? grassCells / plantableCells : null,
+    riparian: regionAverage(riparian, width, moistureLayer, nutrientLayer, biomassLayer),
+    far: regionAverage(far, width, moistureLayer, nutrientLayer, biomassLayer),
+  };
+};
+
 const metricValue = (
   metrics: Record<string, unknown> | null | undefined,
   keys: string[],
@@ -510,6 +635,17 @@ const metricValue = (
 
 const historyValue = (item: Record<string, unknown>, keys: string[]) =>
   metricValue(item, keys) ?? null;
+
+const metricRatio = (
+  metrics: Record<string, unknown>,
+  numeratorKeys: string[],
+  denominatorKeys: string[],
+) => {
+  const numerator = metricValue(metrics, numeratorKeys);
+  const denominator = metricValue(metrics, denominatorKeys);
+  if (numerator === null || denominator === null || denominator <= 0) return null;
+  return numerator / denominator;
+};
 
 const buildMetricsHistory = (
   history: MetricHistoryPoint[] | undefined,
@@ -553,6 +689,19 @@ const buildMetricsHistory = (
       'totalBiomass',
       'biomass',
     ]),
+    grassCoverage:
+      historyValue(item, [
+        'grassCoverage',
+        'herbCoverage',
+        'plantCoverage',
+        'vegetationCoverage',
+        'grassCover',
+      ]) ??
+      metricRatio(
+        item,
+        ['herbCells', 'plantCells', 'vegetatedCells', 'plants', 'herbs'],
+        ['plantableCells', 'landCells', 'habitatCells'],
+      ),
   }));
 
   if (mapped.length) return mapped;
@@ -566,6 +715,7 @@ const buildMetricsHistory = (
     layerActiveCellCount(snapshot?.plantType, width, height) ??
     layerActiveCellCount(snapshot?.plantBiomass, width, height);
   const herbBiomass = layerSum(snapshot?.plantBiomass, width, height);
+  const grassland = buildGrasslandSignal(snapshot);
   return [
     {
       tick: Number(snapshot?.tick ?? 0),
@@ -576,9 +726,19 @@ const buildMetricsHistory = (
       lakeCells: null,
       herbCells,
       herbBiomass,
+      grassCoverage: grassland?.grassCoverage ?? null,
     },
   ];
 };
+
+const formatPercent = (value: number | null) => {
+  if (value === null || !Number.isFinite(value)) return '-';
+  const normalized = Math.abs(value) <= 1 ? value * 100 : value;
+  return `${normalized.toFixed(1)}%`;
+};
+
+const formatMetricNumber = (value: number | null, digits = 3) =>
+  value === null || !Number.isFinite(value) ? '-' : value.toFixed(digits);
 
 const buildMetrics = (
   snapshot: EcoSnapshot | null,
@@ -621,25 +781,86 @@ const buildMetrics = (
       'totalBiomass',
       'biomass',
     ]) ?? layerSum(snapshot?.plantBiomass, width, height);
+  const grassland = buildGrasslandSignal(snapshot);
+  const grassCoverage =
+    metricValue(sourceMetrics, [
+      'grassCoverage',
+      'herbCoverage',
+      'plantCoverage',
+      'vegetationCoverage',
+      'grassCover',
+    ]) ??
+    (sourceMetrics
+      ? metricRatio(
+          sourceMetrics,
+          ['herbCells', 'plantCells', 'vegetatedCells', 'plants', 'herbs'],
+          ['plantableCells', 'landCells', 'habitatCells'],
+        )
+      : null) ??
+    grassland?.grassCoverage ??
+    null;
+  const riparianMoisture =
+    metricValue(sourceMetrics, [
+      'riparianMoisture',
+      'nearMoisture',
+      'riparianMeanMoisture',
+      'nearWaterMoisture',
+    ]) ?? grassland?.riparian.moisture ?? null;
+  const farMoisture =
+    metricValue(sourceMetrics, ['farMoisture', 'uplandMoisture', 'farMeanMoisture']) ??
+    grassland?.far.moisture ??
+    null;
+  const riparianNutrient =
+    metricValue(sourceMetrics, [
+      'riparianNutrient',
+      'nearNutrient',
+      'riparianMeanNutrient',
+      'nearWaterNutrient',
+    ]) ?? grassland?.riparian.nutrient ?? null;
+  const farNutrient =
+    metricValue(sourceMetrics, ['farNutrient', 'uplandNutrient', 'farMeanNutrient']) ??
+    grassland?.far.nutrient ??
+    null;
+  const riparianBiomass =
+    metricValue(sourceMetrics, [
+      'riparianBiomass',
+      'nearBiomass',
+      'riparianHerbBiomass',
+      'nearHerbBiomass',
+    ]) ?? grassland?.riparian.biomass ?? null;
+  const farBiomass =
+    metricValue(sourceMetrics, [
+      'farBiomass',
+      'uplandBiomass',
+      'farHerbBiomass',
+      'uplandHerbBiomass',
+    ]) ?? grassland?.far.biomass ?? null;
 
   return [
     { label: 'Tick', value: formatValue(sourceMetrics?.tick ?? snapshot?.tick ?? 0) },
     { label: 'Season', value: formatValue(snapshot?.season ?? '-') },
-    { label: 'Avg Water', value: water === null ? '-' : water.toFixed(3) },
+    { label: 'Mean Water', value: water === null ? '-' : water.toFixed(3) },
     {
-      label: 'Avg Moisture',
+      label: 'Mean Moisture',
       value: moisture === null ? '-' : moisture.toFixed(3),
     },
     {
-      label: 'Avg Nutrient',
+      label: 'Mean Nutrient',
       value: nutrient === null ? '-' : nutrient.toFixed(3),
     },
-    { label: 'Avg Flow', value: flow === null ? '-' : flow.toFixed(3) },
+    { label: 'Mean Flow', value: flow === null ? '-' : flow.toFixed(3) },
+    { label: 'Grass Coverage', value: formatPercent(grassCoverage) },
     { label: 'Grass Cells', value: formatValue(herbCells ?? '-') },
     {
-      label: 'Grass Biomass',
+      label: 'Total Grass Biomass',
       value: herbBiomass === null ? '-' : herbBiomass.toFixed(1),
     },
+    { label: 'Riparian Biomass', value: formatMetricNumber(riparianBiomass) },
+    { label: 'Far Biomass', value: formatMetricNumber(farBiomass) },
+    { label: 'Riparian Moisture', value: formatMetricNumber(riparianMoisture) },
+    { label: 'Far Moisture', value: formatMetricNumber(farMoisture) },
+    { label: 'Riparian Nutrient', value: formatMetricNumber(riparianNutrient) },
+    { label: 'Far Nutrient', value: formatMetricNumber(farNutrient) },
     {
       label: 'Rivers',
       value: formatValue(sourceMetrics?.riverCells ?? '-'),

@@ -161,10 +161,46 @@ export function basinSpill(seed = 303): SimState {
   return finalizeOceanSurface(state);
 }
 
+export function riverValleyGrassland(seed = 404): SimState {
+  const state = makeState("riverValleyGrassland", seed);
+
+  for (let y = 0; y < HEIGHT; y++) {
+    for (let x = 0; x < WIDTH; x++) {
+      let h = regionalGrasslandHeight(x);
+      if (x >= 60) h = 0;
+
+      const center = valleyCenterY(x);
+      const distanceToValley = Math.abs(y - center);
+      if (x >= 7 && x < 60 && distanceToValley <= 6) {
+        h = Math.max(1, h - 1);
+      }
+      if (x >= 9 && x < 60 && distanceToValley <= 2) {
+        h = 1;
+      }
+
+      setCell(state, x, y, h);
+    }
+  }
+
+  state.springs.push({ index: idx(4, valleyCenterY(4), WIDTH), output: 3.4 });
+  state.springs.push({ index: idx(8, valleyCenterY(8) - 2, WIDTH), output: 0.9 });
+  state.water[idx(4, valleyCenterY(4), WIDTH)] = 0.7;
+  seedInitialHerbs(
+    state,
+    (x, y) => {
+      const center = valleyCenterY(x);
+      return x >= 11 && x < 58 && Math.abs(y - center) <= 8;
+    },
+    { density: 0.1, biomass: 0.08, maturity: 0.08 },
+  );
+  return finalizeOceanSurface(state);
+}
+
 export const scenarios = {
   slopeToOcean,
   basinLake,
   basinSpill,
+  riverValleyGrassland,
 };
 
 export type ScenarioName = keyof typeof scenarios;
@@ -175,19 +211,44 @@ function initialNutrient(height: number, seed: number, index: number): number {
   return Math.min(1.5, base + hashUnit(seed, index) * 0.08);
 }
 
-function seedInitialHerbs(state: SimState, inSeedZone: (x: number, y: number) => boolean): void {
+interface HerbSeedOptions {
+  density?: number;
+  biomass?: number;
+  maturity?: number;
+}
+
+function seedInitialHerbs(
+  state: SimState,
+  inSeedZone: (x: number, y: number) => boolean,
+  options: HerbSeedOptions = {},
+): void {
+  const density = options.density ?? 0.18;
+  const biomass = options.biomass ?? 0.12;
+  const maturity = options.maturity ?? 0.15;
   for (let y = 0; y < state.height; y++) {
     for (let x = 0; x < state.width; x++) {
       const i = idx(x, y, state.width);
       if (state.base[i] === BaseTerrain.OCEAN || !inSeedZone(x, y)) continue;
       if (state.base[i] !== BaseTerrain.PLAIN && state.base[i] !== BaseTerrain.LOW_HILL) continue;
-      if (hashUnit(state.seed ^ 0x6d2b79f5, i) > 0.18) continue;
+      if (hashUnit(state.seed ^ 0x6d2b79f5, i) > density) continue;
       state.plantType[i] = PlantType.HERB;
-      state.plantBiomass[i] = 0.12;
-      state.plantMaturity[i] = 0.15;
+      state.plantBiomass[i] = biomass;
+      state.plantMaturity[i] = maturity;
       state.plantStress[i] = 0;
     }
   }
+}
+
+function regionalGrasslandHeight(x: number): number {
+  if (x < 8) return 4;
+  if (x < 18) return 3;
+  if (x < 34) return 2;
+  if (x < 60) return 1;
+  return 0;
+}
+
+function valleyCenterY(x: number): number {
+  return 32 + Math.round(Math.sin(x * 0.24) * 4);
 }
 
 function hashUnit(seed: number, index: number): number {

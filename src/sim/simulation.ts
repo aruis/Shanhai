@@ -179,17 +179,23 @@ export function createSimulation(
 }
 
 function resolveScenarioName(input: ScenarioInput): ScenarioName {
-  const nested = typeof input === "object" && input !== null ? input.scenario : undefined;
-  const raw =
-    typeof input === "string"
-      ? input
-      : typeof nested === "string"
-        ? nested
-        : typeof nested === "object" && nested !== null && "id" in nested
-          ? nested.id
-          : typeof nested === "object" && nested !== null && "name" in nested
-            ? nested.name
-          : undefined;
+  const objectInput = typeof input === "object" && input !== null ? input : null;
+  const nested = objectInput?.scenario;
+  let raw: string | undefined;
+
+  if (typeof input === "string") {
+    raw = input;
+  } else if (objectInput && "id" in objectInput && typeof objectInput.id === "string") {
+    raw = objectInput.id;
+  } else if (objectInput && "name" in objectInput && typeof objectInput.name === "string") {
+    raw = objectInput.name;
+  } else if (typeof nested === "string") {
+    raw = nested;
+  } else if (nested && typeof nested === "object" && "id" in nested && typeof nested.id === "string") {
+    raw = nested.id;
+  } else if (nested && typeof nested === "object" && "name" in nested && typeof nested.name === "string") {
+    raw = nested.name;
+  }
 
   switch (raw) {
     case "slopeToOcean":
@@ -204,6 +210,11 @@ function resolveScenarioName(input: ScenarioInput): ScenarioName {
     case "basin-spill":
     case "basin-spillway":
       return "basinSpill";
+    case "riverValleyGrassland":
+    case "river-valley-grassland":
+    case "river-valley":
+    case "grassland-river":
+      return "riverValleyGrassland";
     default:
       return "slopeToOcean";
   }

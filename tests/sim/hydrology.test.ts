@@ -1,9 +1,15 @@
 import { describe, expect, it } from "vitest";
 import { collectMetrics } from "../../src/sim/metrics";
 import { stableDefaultParams } from "../../src/sim/params";
-import { basinLake, basinSpill, slopeToOcean } from "../../src/sim/scenarios";
+import { basinLake, basinSpill, scenarios, slopeToOcean } from "../../src/sim/scenarios";
 import { createSimulation } from "../../src/sim/simulation";
 import { Surface } from "../../src/sim/types";
+import type { SimState } from "../../src/sim/types";
+
+const RIVER_VALLEY_GRASSLAND = "riverValleyGrassland";
+const describeRiverValleyGrassland = hasScenario(RIVER_VALLEY_GRASSLAND)
+  ? describe
+  : describe.skip;
 
 describe("hydrology MVP", () => {
   it("creates fixed scenarios deterministically for the same seed", () => {
@@ -141,8 +147,53 @@ describe("hydrology MVP", () => {
   });
 });
 
+describeRiverValleyGrassland("riverValleyGrassland hydrology validation", () => {
+  it("creates the fixed river-valley grassland scenario deterministically", () => {
+    const factory = getScenarioFactory(RIVER_VALLEY_GRASSLAND);
+    const a = factory(404);
+    const b = factory(404);
+
+    expect(a.width).toBe(64);
+    expect(a.height).toBe(64);
+    expect(a.seed).toBe(404);
+    expect(a.scenario).toBe(RIVER_VALLEY_GRASSLAND);
+    expect(Array.from(a.heightMap)).toEqual(Array.from(b.heightMap));
+    expect(Array.from(a.moisture)).toEqual(Array.from(b.moisture));
+    expect(Array.from(a.nutrient)).toEqual(Array.from(b.nutrient));
+    expect(Array.from(a.plantType)).toEqual(Array.from(b.plantType));
+    expect(a.springs).toEqual(b.springs);
+    expect(a.springs.length).toBeGreaterThan(0);
+  });
+
+  it("resolves scenario config objects from the worker protocol shape", () => {
+    const sim = createSimulation({ id: RIVER_VALLEY_GRASSLAND }, stableDefaultParams);
+
+    expect(sim.state.scenario).toBe(RIVER_VALLEY_GRASSLAND);
+    expect(sim.getSnapshot().scenario).toBe(RIVER_VALLEY_GRASSLAND);
+  });
+
+  it("develops a connected river signal without behaving like a lake basin", () => {
+    const sim = createSimulation(RIVER_VALLEY_GRASSLAND, stableDefaultParams);
+    sim.step(220);
+    const metrics = sim.metrics();
+
+    expect(metrics.riverCells).toBeGreaterThan(0);
+    expect(metrics.flowThrough).toBeGreaterThan(0);
+    expect(metrics.largestRiverSize).toBeGreaterThan(metrics.riverComponentCount);
+    expect(metrics.riverCells).toBeGreaterThan(metrics.lakeCells);
+  });
+});
+
 function totalWater(water: Float64Array): number {
   let total = 0;
   for (const amount of water) total += amount;
   return total;
+}
+
+function getScenarioFactory(name: string): (seed?: number) => SimState {
+  return (scenarios as Record<string, (seed?: number) => SimState>)[name];
+}
+
+function hasScenario(name: string): boolean {
+  return Object.prototype.hasOwnProperty.call(scenarios, name);
 }

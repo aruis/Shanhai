@@ -1,8 +1,14 @@
 import { describe, expect, it } from "vitest";
 import { stableDefaultParams } from "../../src/sim/params";
+import { scenarios } from "../../src/sim/scenarios";
 import { createSimulation } from "../../src/sim/simulation";
 import { BaseTerrain, PlantType, Surface } from "../../src/sim/types";
 import type { SimState } from "../../src/sim/types";
+
+const RIVER_VALLEY_GRASSLAND = "riverValleyGrassland";
+const describeRiverValleyGrassland = hasScenario(RIVER_VALLEY_GRASSLAND)
+  ? describe
+  : describe.skip;
 
 describe("M2 herb ecology", () => {
   it("grows herb biomass before winter", () => {
@@ -103,6 +109,45 @@ describe("M2 herb ecology", () => {
   });
 });
 
+describeRiverValleyGrassland("riverValleyGrassland M2.2 validation", () => {
+  it("forms a stronger riparian grassland band than distant plantable land", () => {
+    const sim = createSimulation(RIVER_VALLEY_GRASSLAND, stableDefaultParams);
+    sim.step(240);
+
+    const metrics = sim.metrics();
+    const signal = landSignalNearWater(sim.state);
+
+    expect(sim.state.scenario).toBe(RIVER_VALLEY_GRASSLAND);
+    expect(signal.waterCells).toBeGreaterThan(0);
+    expect(signal.near.count).toBeGreaterThan(0);
+    expect(signal.far.count).toBeGreaterThan(signal.near.count);
+    expect(metrics.riparianLandCells).toBeGreaterThan(0);
+    expect(metrics.farLandCells).toBeGreaterThan(metrics.riparianLandCells);
+    expect(metrics.riparianMeanMoisture).toBeGreaterThan(metrics.farMeanMoisture * 1.5);
+    expect(metrics.riparianMeanNutrient).toBeGreaterThan(metrics.farMeanNutrient);
+    expect(metrics.riparianHerbBiomass).toBeCloseTo(signal.near.herbBiomass, 8);
+    expect(metrics.farHerbBiomass).toBeCloseTo(signal.far.herbBiomass, 8);
+    expect(metrics.riparianHerbBiomass).toBeGreaterThan(metrics.farHerbBiomass * 2);
+    expect(signal.near.moisture).toBeGreaterThan(signal.far.moisture * 1.5);
+    expect(signal.near.nutrient).toBeGreaterThan(signal.far.nutrient);
+    expect(signal.near.herbBiomass).toBeGreaterThan(signal.far.herbBiomass * 2);
+  });
+
+  it("keeps riparian lift local instead of homogenizing all grassland", () => {
+    const sim = createSimulation(RIVER_VALLEY_GRASSLAND, stableDefaultParams);
+    sim.step(240);
+
+    const signal = landSignalNearWater(sim.state);
+    const totalPlantable = signal.near.count + signal.far.count + signal.middle.count;
+
+    expect(totalPlantable).toBeGreaterThan(signal.near.count);
+    expect(signal.near.herbBiomass).toBeGreaterThan(signal.middle.herbBiomass);
+    expect(signal.middle.herbBiomass).toBeGreaterThanOrEqual(signal.far.herbBiomass);
+    expect(signal.near.moisture).toBeGreaterThan(signal.middle.moisture);
+    expect(signal.middle.moisture).toBeGreaterThanOrEqual(signal.far.moisture);
+  });
+});
+
 interface RegionAverage {
   count: number;
   moisture: number;
@@ -112,11 +157,17 @@ interface RegionAverage {
 
 function landSignalNearWater(
   state: SimState,
-): { near: RegionAverage; far: RegionAverage } {
+): {
+  waterCells: number;
+  near: RegionAverage;
+  middle: RegionAverage;
+  far: RegionAverage;
+} {
   const waterCells = Array.from(state.surface, (surface, index) =>
     surface === Surface.RIVER || surface === Surface.LAKE ? index : -1,
   ).filter((index) => index >= 0);
   const near: number[] = [];
+  const middle: number[] = [];
   const far: number[] = [];
 
   for (let i = 0; i < state.surface.length; i++) {
@@ -124,13 +175,20 @@ function landSignalNearWater(
 
     const distance = distanceToNearestCell(state, i, waterCells);
     if (distance === 1) near.push(i);
+    else if (distance > 1 && distance < 6) middle.push(i);
     else if (distance >= 6) far.push(i);
   }
 
   return {
+    waterCells: waterCells.length,
     near: averageRegion(state, near),
+    middle: averageRegion(state, middle),
     far: averageRegion(state, far),
   };
+}
+
+function hasScenario(name: string): boolean {
+  return Object.prototype.hasOwnProperty.call(scenarios, name);
 }
 
 function isPlantableLand(state: SimState, index: number): boolean {

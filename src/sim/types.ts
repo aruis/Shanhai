@@ -129,6 +129,16 @@ export interface Metrics {
   totalNutrient: number;
   herbCells: number;
   herbBiomass: number;
+  grassCoverage: number;
+  plantableLandCells: number;
+  riparianLandCells: number;
+  farLandCells: number;
+  riparianMeanMoisture: number;
+  farMeanMoisture: number;
+  riparianMeanNutrient: number;
+  farMeanNutrient: number;
+  riparianHerbBiomass: number;
+  farHerbBiomass: number;
   meanMoisture: number;
   meanNutrient: number;
   oceanSink: number;

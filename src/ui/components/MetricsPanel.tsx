@@ -14,6 +14,7 @@ interface MetricHistoryPoint {
   lakeCells: number | null;
   herbCells?: number | null;
   herbBiomass?: number | null;
+  grassCoverage?: number | null;
 }
 
 interface MetricsPanelProps {
@@ -23,9 +24,9 @@ interface MetricsPanelProps {
 
 const seriesConfig = [
   { key: 'totalWater', label: 'Water', color: '#58a6ff' },
-  { key: 'avgMoisture', label: 'Avg moisture', color: '#5fb6d6' },
-  { key: 'avgNutrient', label: 'Avg nutrient', color: '#dcb455' },
-  { key: 'herbBiomass', label: 'Grass biomass', color: '#72d86b' },
+  { key: 'avgMoisture', label: 'Mean moisture', color: '#5fb6d6' },
+  { key: 'avgNutrient', label: 'Mean nutrient', color: '#dcb455' },
+  { key: 'grassCoverage', label: 'Grass coverage', color: '#72d86b' },
 ] satisfies Array<{
   key: keyof MetricHistoryPoint;
   label: string;
