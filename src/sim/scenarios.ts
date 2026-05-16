@@ -192,6 +192,11 @@ export function riverValleyGrassland(seed = 404): SimState {
       }
 
       setCell(state, x, y, h);
+      if (x >= 9 && x < 60 && distanceToValley <= 3 && h > 0) {
+        const i = idx(x, y, WIDTH);
+        state.moisture[i] = Math.max(state.moisture[i], 0.12);
+        state.nutrient[i] = Math.max(state.nutrient[i], 0.72);
+      }
     }
   }
 
@@ -217,11 +222,67 @@ export function riverValleyGrassland(seed = 404): SimState {
   return finalizeOceanSurface(state);
 }
 
+export function foothillShelter(seed = 505): SimState {
+  const state = makeState("foothillShelter", seed);
+
+  for (let y = 0; y < HEIGHT; y++) {
+    for (let x = 0; x < WIDTH; x++) {
+      let h = foothillShelterHeight(x, y);
+      const channel = Math.abs(y - foothillShelterRiverY(x)) <= 1 && x >= 14 && x < 59;
+      if (channel) h = 1;
+      setCell(state, x, y, h);
+
+      const i = idx(x, y, WIDTH);
+      if (h === 1 && x >= 18 && x < 59) {
+        state.moisture[i] = 0.08;
+        state.nutrient[i] = Math.max(state.nutrient[i], 0.58);
+      } else if (h === 2 && x >= 8 && x < 25) {
+        state.moisture[i] = 0.055;
+        state.nutrient[i] = Math.max(state.nutrient[i], 0.42);
+      }
+      if (channel) {
+        state.surface[i] = Surface.RIVER;
+        state.water[i] = 0.12;
+        state.moisture[i] = 0.34;
+        state.flowMemory[i] = 2.2;
+        state.riverTicks[i] = 3;
+      }
+    }
+  }
+
+  const springIndex = idx(9, foothillShelterRiverY(14), WIDTH);
+  state.springs.push({ index: springIndex, output: 2.8 });
+  state.water[springIndex] = 0.55;
+  state.moisture[springIndex] = 0.38;
+
+  seedInitialHerbs(
+    state,
+    (x, y) =>
+      x >= 19 &&
+      x < 60 &&
+      y >= 7 &&
+      y <= 56 &&
+      Math.abs(y - foothillShelterRiverY(x)) <= 16,
+    { density: 0.22, biomass: 0.14, maturity: 0.18 },
+  );
+  seedInitialWoodies(
+    state,
+    (x, y) => {
+      const edge = foothillShelterEdgeX(y);
+      return x >= 7 && x <= edge + 2 && y >= 6 && y <= 57;
+    },
+    { density: 0.12, biomass: 0.28, maturity: 0.24 },
+  );
+
+  return finalizeOceanSurface(state);
+}
+
 export const scenarios = {
   slopeToOcean,
   basinLake,
   basinSpill,
   riverValleyGrassland,
+  foothillShelter,
 };
 
 export type ScenarioName = keyof typeof scenarios;
@@ -298,6 +359,22 @@ function regionalGrasslandHeight(x: number): number {
 
 function valleyCenterY(x: number): number {
   return 32 + Math.round(Math.sin(x * 0.24) * 4);
+}
+
+function foothillShelterHeight(x: number, y: number): number {
+  if (x >= 60) return 1;
+  const edge = foothillShelterEdgeX(y);
+  if (x < 5) return 3;
+  if (x <= edge) return 2;
+  return 1;
+}
+
+function foothillShelterEdgeX(y: number): number {
+  return 18 + Math.round(Math.sin(y * 0.18) * 3);
+}
+
+function foothillShelterRiverY(x: number): number {
+  return 32 + Math.round(Math.sin(x * 0.17) * 3);
 }
 
 function hashUnit(seed: number, index: number): number {

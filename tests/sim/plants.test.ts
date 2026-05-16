@@ -6,6 +6,7 @@ import { BaseTerrain, PlantType, Surface } from "../../src/sim/types";
 import type { SimState } from "../../src/sim/types";
 
 const RIVER_VALLEY_GRASSLAND = "riverValleyGrassland";
+const FOOTHILL_SHELTER = "foothillShelter";
 const WOODY_PLANT_TYPE = PlantType.WOODY;
 
 describe("M2 herb ecology", () => {
@@ -197,6 +198,75 @@ describe("M3 woody terrain zoning validation", () => {
   });
 });
 
+describe("M3.2 foothill shelter vegetation validation", () => {
+  it("is registered and creates deterministic initial state", () => {
+    const factory = getScenarioFactory(FOOTHILL_SHELTER);
+    const a = factory(505);
+    const b = factory(505);
+
+    expect(a.width).toBe(64);
+    expect(a.height).toBe(64);
+    expect(a.seed).toBe(505);
+    expect(a.scenario).toBe(FOOTHILL_SHELTER);
+    expect(Array.from(a.base)).toEqual(Array.from(b.base));
+    expect(Array.from(a.heightMap)).toEqual(Array.from(b.heightMap));
+    expect(Array.from(a.surface)).toEqual(Array.from(b.surface));
+    expect(Array.from(a.moisture)).toEqual(Array.from(b.moisture));
+    expect(Array.from(a.nutrient)).toEqual(Array.from(b.nutrient));
+    expect(Array.from(a.plantType)).toEqual(Array.from(b.plantType));
+    expect(Array.from(a.plantBiomass)).toEqual(Array.from(b.plantBiomass));
+    expect(Array.from(a.plantMaturity)).toEqual(Array.from(b.plantMaturity));
+    expect(a.springs).toEqual(b.springs);
+    expect(woodyCellCount(a)).toBeGreaterThan(0);
+  });
+
+  it("keeps long-term vegetation stable through repeated winters", () => {
+    const sim = createSimulation(FOOTHILL_SHELTER, stableDefaultParams);
+
+    sim.step(720);
+    const afterTwoYears = sim.metrics();
+    const twoYearSignal = vegetationStabilitySignal(sim.state);
+
+    expect(afterTwoYears.season).toBe("spring");
+    expect(twoYearSignal.lowHill.count).toBeGreaterThan(0);
+    expect(twoYearSignal.riparian.count).toBeGreaterThan(0);
+    expect(twoYearSignal.lowHill.woodyCells).toBeGreaterThan(0);
+
+    sim.step(269);
+    const lateGrowingSeason = sim.metrics();
+    const lateGrowingSeasonSignal = vegetationStabilitySignal(sim.state);
+
+    expect(lateGrowingSeason.season).toBe("autumn");
+    expect(lateGrowingSeasonSignal.riparian.herbBiomass).toBeGreaterThan(0);
+    expect(lateGrowingSeason.riparianHerbBiomass).toBeGreaterThan(0);
+
+    sim.step(91);
+    const afterThreeYears = sim.metrics();
+    const threeYearSignal = vegetationStabilitySignal(sim.state);
+
+    expect(afterThreeYears.season).toBe("spring");
+    expect(threeYearSignal.lowHill.woodyCells).toBeGreaterThan(0);
+    expect(threeYearSignal.lowHill.woodyCells).toBeGreaterThanOrEqual(
+      Math.floor(twoYearSignal.lowHill.woodyCells * 0.5),
+    );
+    expect(threeYearSignal.lowHill.woodyCoverage).toBeLessThan(0.9);
+    expect(afterThreeYears.lowHillWoodyCoverage).toBeLessThan(0.9);
+  });
+
+  it("exposes non-negative animal-prep shelter metrics with woody shelter signal", () => {
+    const sim = createSimulation(FOOTHILL_SHELTER, stableDefaultParams);
+    sim.step(720);
+
+    const metrics = sim.metrics();
+
+    expect(metrics.herbToWoodyRatio).toBeGreaterThanOrEqual(0);
+    expect(metrics.riparianGrassCoverage).toBeGreaterThanOrEqual(0);
+    expect(metrics.woodyShelterCells).toBeGreaterThan(0);
+    expect(metrics.winterShelterCells).toBeGreaterThanOrEqual(0);
+    expect(metrics.winterShelterCells).toBeLessThanOrEqual(metrics.plantableLandCells);
+  });
+});
+
 interface RegionAverage {
   count: number;
   moisture: number;
@@ -353,4 +423,32 @@ function isDryLand(state: SimState, index: number): boolean {
     state.surface[index] !== Surface.RIVER &&
     state.surface[index] !== Surface.LAKE
   );
+}
+
+function getScenarioFactory(name: string): (seed?: number) => SimState {
+  const factory = (scenarios as Record<string, ((seed?: number) => SimState) | undefined>)[name];
+  expect(factory).toBeTypeOf("function");
+  return factory as (seed?: number) => SimState;
+}
+
+function vegetationStabilitySignal(state: SimState): {
+  lowHill: RegionAverage;
+  riparian: RegionAverage;
+} {
+  const waterCells = Array.from(state.surface, (surface, index) =>
+    surface === Surface.RIVER || surface === Surface.LAKE ? index : -1,
+  ).filter((index) => index >= 0);
+  const lowHill: number[] = [];
+  const riparian: number[] = [];
+
+  for (let i = 0; i < state.base.length; i++) {
+    if (!isPlantableLand(state, i)) continue;
+    if (state.base[i] === BaseTerrain.LOW_HILL) lowHill.push(i);
+    if (distanceToNearestCell(state, i, waterCells) === 1) riparian.push(i);
+  }
+
+  return {
+    lowHill: averageRegion(state, lowHill),
+    riparian: averageRegion(state, riparian),
+  };
 }

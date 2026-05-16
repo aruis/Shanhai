@@ -18,9 +18,9 @@ The current prototype focuses on the hydrology-to-grass ecology loop:
 
 ## Current Milestone
 
-### M3.1: Woody Plants and Terrain Zoning
+### M3.2: Vegetation Stability and Foothill Shelter Prep
 
-M2 hydrology-to-grass behavior is implemented and protected by validation coverage. M3.1 adds the first woody plant layer so low hills and foothills can hold slower, longer-lived vegetation:
+M2 hydrology-to-grass behavior is implemented and protected by validation coverage. M3.1 added the first woody plant layer so low hills and foothills can hold slower, longer-lived vegetation. M3.2 hardens that layer for animal work by validating long-term vegetation stability and a dedicated foothill shelter scenario:
 
 - per-cell hydrology budget inspection
 - flow direction arrows
@@ -33,12 +33,13 @@ M2 hydrology-to-grass behavior is implemented and protected by validation covera
 - M2.2 river-valley grassland scenario validation and riparian metric tests
 - slow-growing woody plants with deterministic spread, low-hill habitat constraints, simple herb competition, woody metrics, and UI rendering
 - M3.1 woody validation tests for deterministic woody state, terrain exclusion, and low-hill/foothill zoning
+- M3.2 foothill shelter validation for deterministic setup, woody persistence across repeated winters, non-explosive low-hill woody coverage, persistent riparian grass, and non-negative animal-prep shelter metrics
 
 ## Roadmap
 
 - **M1 Hydrology Debug Workbench:** make water behavior observable, tunable, and testable. Done.
 - **M2 Moisture, Nutrients, and Herbaceous Plants:** add soil moisture, nutrients, river-valley enrichment, grass growth, seeding, winter die-off, and nutrient return. Validation coverage is in place.
-- **M3 Woody Plants and Terrain Zoning:** add slow-growing woody plants, low-hill forest bands, and plant competition. M3.1 is implemented with conservative woody growth and validation coverage.
+- **M3 Woody Plants and Terrain Zoning:** add slow-growing woody plants, low-hill forest bands, plant competition, and stable foothill shelter signals for future animals. M3.2 is focused on vegetation stability plus pre-animal shelter metrics.
 - **M4 Animal Survival:** add local herbivore movement, thirst, hunger, grazing, death, and nutrient return.
 - **M5 Reproduction and Seasonal Population Cycles:** add age, sex, reproduction cooldown, autumn energy storage, winter shelter, and population oscillation metrics.
 
@@ -51,6 +52,7 @@ The first milestone uses fixed `64x64` scenarios:
 - `basinSpill`: a basin should fill, spill through a low outlet, and form downstream flow.
 - `riverValleyGrassland`: a stable river should cross plantable grassland, with higher riparian moisture, nutrients, and herb biomass than distant plantable land.
 - M3.1 woody checks reuse `riverValleyGrassland` to validate deterministic woody state, exclusion from water/ocean/mid/high mountains, and stronger low-hill/foothill woody signal than distant plains.
+- `foothillShelter`: a foothill meadow and low-hill woodland scenario for M3.2, validating deterministic setup, multi-year woody persistence, bounded low-hill woody coverage, persistent riparian grass, and shelter metrics before animal survival rules are added.
 
 ## Tech Stack
 

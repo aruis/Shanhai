@@ -215,6 +215,11 @@ function resolveScenarioName(input: ScenarioInput): ScenarioName {
     case "river-valley":
     case "grassland-river":
       return "riverValleyGrassland";
+    case "foothillShelter":
+    case "foothill-shelter":
+    case "foothill-shelter-validation":
+    case "woodland-edge":
+      return "foothillShelter";
     default:
       return "slopeToOcean";
   }

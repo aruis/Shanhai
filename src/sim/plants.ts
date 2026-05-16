@@ -35,6 +35,8 @@ export function stepPlants(state: SimState, params: Params): SimState {
       nextMaturity[i] = 0;
       nextStress[i] = 0;
     }
+  } else if (season === "spring") {
+    recruitSpringHerbs(state, params, nextType, nextBiomass, nextMaturity, nextStress, nextNutrient);
   }
 
   for (let i = 0; i < size; i++) {
@@ -215,6 +217,41 @@ function hasWoodyNeighbor(state: SimState, index: number, biomassThreshold: numb
   return false;
 }
 
+function recruitSpringHerbs(
+  state: SimState,
+  params: Params,
+  plantType: Uint8Array,
+  plantBiomass: Float64Array,
+  plantMaturity: Float64Array,
+  plantStress: Float64Array,
+  nutrient: Float64Array,
+): void {
+  const springYear = Math.floor(state.tick / 360);
+  for (let i = 0; i < plantType.length; i++) {
+    if (plantType[i] !== PlantType.EMPTY || !isHerbHabitat(state, i)) continue;
+    if (
+      state.moisture[i] < params.herbGrowMoistureMin ||
+      nutrient[i] < params.herbGrowNutrientMin + params.herbSeedNutrientUse
+    ) {
+      continue;
+    }
+    const recruitment = recruitmentRateForCell(state, i, params.herbSpringRecruitmentRate);
+    if (hashUnit(state.seed ^ 0x94d049bb ^ springYear, i) > recruitment) continue;
+
+    plantType[i] = PlantType.HERB;
+    plantBiomass[i] = params.herbSeedBiomass;
+    plantMaturity[i] = 0;
+    plantStress[i] = 0;
+    nutrient[i] = clamp(nutrient[i] - params.herbSeedNutrientUse * 0.25, 0, params.nutrientMax);
+  }
+}
+
+function recruitmentRateForCell(state: SimState, index: number, baseRate: number): number {
+  const surfaceBoost = state.surface[index] === Surface.WET ? 1.8 : 1;
+  const terrainBoost = state.base[index] === BaseTerrain.PLAIN ? 1.25 : 0.85;
+  return clamp(baseRate * surfaceBoost * terrainBoost, 0, 0.12);
+}
+
 function commitPlants(
   state: SimState,
   plantType: Uint8Array,
@@ -236,4 +273,14 @@ function clamp(value: number, min: number, max: number): number {
   if (value < min) return min;
   if (value > max) return max;
   return value;
+}
+
+function hashUnit(seed: number, index: number): number {
+  let x = Math.imul(index + 0x9e3779b9, 0x85ebca6b) ^ seed;
+  x ^= x >>> 16;
+  x = Math.imul(x, 0x7feb352d);
+  x ^= x >>> 15;
+  x = Math.imul(x, 0x846ca68b);
+  x ^= x >>> 16;
+  return (x >>> 0) / 0xffffffff;
 }

@@ -119,6 +119,7 @@ export interface Params {
   herbSeedCost: number;
   herbSeedBiomass: number;
   herbSeedNutrientUse: number;
+  herbSpringRecruitmentRate: number;
   herbDeathNutrientRatio: number;
   woodyBiomassMax: number;
   woodyGrowMoistureMin: number;
@@ -146,9 +147,13 @@ export interface Metrics {
   herbBiomass: number;
   woodyCells: number;
   woodyBiomass: number;
+  herbToWoodyRatio: number;
   grassCoverage: number;
   woodyCoverage: number;
   lowHillWoodyCoverage: number;
+  riparianGrassCoverage: number;
+  woodyShelterCells: number;
+  winterShelterCells: number;
   plantableLandCells: number;
   lowHillPlantableCells: number;
   riparianLandCells: number;

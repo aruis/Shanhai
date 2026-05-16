@@ -64,6 +64,7 @@ const scenarios = [
   { id: 'basinLake', label: 'Closed Basin' },
   { id: 'basinSpill', label: 'Basin Spillway' },
   { id: 'riverValleyGrassland', label: 'River Valley Grassland' },
+  { id: 'foothillShelter', label: 'Foothill Shelter' },
 ];
 
 const initialLayers: LayerState = {
@@ -518,6 +519,22 @@ const layerActiveCellCount = (
   return count;
 };
 
+const layerHerbCellCount = (
+  plantTypeLayer: MatrixLayer,
+  biomassLayer: MatrixLayer,
+  width: number,
+  height: number,
+) => {
+  if (!plantTypeLayer) return layerActiveCellCount(biomassLayer, width, height);
+  let count = 0;
+  for (let y = 0; y < height; y += 1) {
+    for (let x = 0; x < width; x += 1) {
+      if (isGrassPlantValue(readCell(plantTypeLayer, x, y, width))) count += 1;
+    }
+  }
+  return count;
+};
+
 const isActivePlantValue = (value: unknown) => {
   if (value === null || value === undefined || value === false) return false;
   const numeric = Number(value);
@@ -804,9 +821,12 @@ const buildMetricsHistory = (
   const avgWater = layerAverage(snapshot?.W, width, height);
   const avgMoisture = layerAverage(snapshot?.M ?? snapshot?.moisture, width, height);
   const avgNutrient = layerAverage(snapshot?.N ?? snapshot?.nutrient, width, height);
-  const herbCells =
-    layerActiveCellCount(snapshot?.plantType, width, height) ??
-    layerActiveCellCount(snapshot?.plantBiomass, width, height);
+  const herbCells = layerHerbCellCount(
+    snapshot?.plantType,
+    snapshot?.plantBiomass,
+    width,
+    height,
+  );
   const herbBiomass = layerSum(snapshot?.plantBiomass, width, height);
   const woodyCells =
     layerActiveCellCount(snapshot?.woodyBiomass, width, height) ??
@@ -876,8 +896,12 @@ const buildMetrics = (
       'plants',
       'herbs',
     ]) ??
-    layerActiveCellCount(snapshot?.plantType, width, height) ??
-    layerActiveCellCount(snapshot?.plantBiomass, width, height);
+    layerHerbCellCount(
+      snapshot?.plantType,
+      snapshot?.plantBiomass,
+      width,
+      height,
+    );
   const herbBiomass =
     metricValue(sourceMetrics, [
       'herbBiomass',
@@ -934,6 +958,26 @@ const buildMetrics = (
       : null) ??
     grassland?.woodyCoverage ??
     null;
+  const herbToWoodyRatio = metricValue(sourceMetrics, [
+    'herbToWoodyRatio',
+    'grassToWoodyRatio',
+    'herbWoodyRatio',
+  ]);
+  const riparianGrassCoverage =
+    metricValue(sourceMetrics, [
+      'riparianGrassCoverage',
+      'riparianHerbCoverage',
+      'nearWaterGrassCoverage',
+    ]) ?? null;
+  const woodyShelterCells = metricValue(sourceMetrics, [
+    'woodyShelterCells',
+    'woodlandShelterCells',
+    'shelterCells',
+  ]);
+  const winterShelterCells = metricValue(sourceMetrics, [
+    'winterShelterCells',
+    'winterSurvivableHabitatCells',
+  ]);
   const riparianMoisture =
     metricValue(sourceMetrics, [
       'riparianMoisture',
@@ -999,6 +1043,10 @@ const buildMetrics = (
       label: 'Total Woody Biomass',
       value: woodyBiomass === null ? '-' : woodyBiomass.toFixed(1),
     },
+    { label: 'Herb/Woody Ratio', value: formatMetricNumber(herbToWoodyRatio, 2) },
+    { label: 'Riparian Grass', value: formatPercent(riparianGrassCoverage) },
+    { label: 'Woody Shelter Cells', value: formatValue(woodyShelterCells ?? '-') },
+    { label: 'Winter Shelter Cells', value: formatValue(winterShelterCells ?? '-') },
     { label: 'Riparian Biomass', value: formatMetricNumber(riparianBiomass) },
     { label: 'Far Biomass', value: formatMetricNumber(farBiomass) },
     { label: 'Riparian Moisture', value: formatMetricNumber(riparianMoisture) },
@@ -1043,6 +1091,19 @@ const buildInspectorValues = (
       y,
       width,
     );
+  const plantValue =
+    firstPresent(workerCell, plantTypeKeys) ??
+    readCell(pickLayer(snapshot, plantTypeKeys), x, y, width);
+  const biomassValue =
+    firstPresent(workerCell, plantBiomassKeys) ??
+    readCell(pickLayer(snapshot, plantBiomassKeys), x, y, width);
+  const woodyValue =
+    firstPresent(workerCell, woodyPlantKeys) ??
+    readCell(pickLayer(snapshot, woodyPlantKeys), x, y, width);
+  const woodyBiomassValue =
+    firstPresent(workerCell, woodyBiomassKeys) ??
+    readCell(pickLayer(snapshot, woodyBiomassKeys), x, y, width);
+  const isUnifiedWoody = isWoodyPlantValue(plantValue);
 
   return [
     {
@@ -1087,30 +1148,20 @@ const buildInspectorValues = (
     },
     {
       label: 'Plant',
-      value: formatValue(
-        firstPresent(workerCell, plantTypeKeys) ??
-          readCell(pickLayer(snapshot, plantTypeKeys), x, y, width),
-      ),
+      value: formatValue(plantValue),
     },
     {
       label: 'Biomass',
-      value: formatValue(
-        firstPresent(workerCell, plantBiomassKeys) ??
-          readCell(pickLayer(snapshot, plantBiomassKeys), x, y, width),
-      ),
+      value: formatValue(biomassValue),
     },
     {
       label: 'Woody',
-      value: formatValue(
-        firstPresent(workerCell, woodyPlantKeys) ??
-          readCell(pickLayer(snapshot, woodyPlantKeys), x, y, width),
-      ),
+      value: formatValue(woodyValue ?? (isUnifiedWoody ? plantValue : undefined)),
     },
     {
       label: 'Woody Biomass',
       value: formatValue(
-        firstPresent(workerCell, woodyBiomassKeys) ??
-          readCell(pickLayer(snapshot, woodyBiomassKeys), x, y, width),
+        woodyBiomassValue ?? (isUnifiedWoody ? biomassValue : undefined),
       ),
     },
     {
