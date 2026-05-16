@@ -20,6 +20,9 @@ type PresetId =
   | 'fast_river'
   | 'lake_heavy';
 type WorkbenchLayerState = LayerState & {
+  moisture: boolean;
+  nutrient: boolean;
+  plants: boolean;
   flowArrows: boolean;
   components: boolean;
 };
@@ -67,12 +70,15 @@ const initialLayers: LayerState = {
   surface: true,
   water: true,
   flow: true,
+  moisture: false,
+  nutrient: false,
+  plants: true,
+  flowArrows: true,
+  components: false,
 } as LayerState;
 
 const initialWorkbenchLayers: WorkbenchLayerState = {
   ...initialLayers,
-  flowArrows: true,
-  components: false,
 };
 
 const paramPresets: Array<{ id: PresetId; label: string }> = [
@@ -330,6 +336,61 @@ const pickLayer = (snapshot: EcoSnapshot, keys: string[]): MatrixLayer => {
   return undefined;
 };
 
+const moistureKeys = [
+  'M',
+  'moisture',
+  'soilMoisture',
+  'soil_moisture',
+  'moistureMap',
+  'moisture_map',
+];
+
+const nutrientKeys = [
+  'N',
+  'nutrient',
+  'nutrients',
+  'soilNutrient',
+  'soilNutrients',
+  'soil_nutrient',
+  'soil_nutrients',
+  'nutrientMap',
+  'nutrient_map',
+];
+
+const plantTypeKeys = [
+  'plantType',
+  'plant_type',
+  'plants',
+  'plant',
+  'herb',
+  'herbs',
+  'vegetation',
+];
+
+const plantBiomassKeys = [
+  'plantBiomass',
+  'plant_biomass',
+  'biomass',
+  'herbBiomass',
+  'herb_biomass',
+];
+
+const plantMaturityKeys = [
+  'plantMaturity',
+  'plant_maturity',
+  'maturity',
+  'herbMaturity',
+  'herb_maturity',
+];
+
+const plantStressKeys = [
+  'plantStress',
+  'plant_stress',
+  'stress',
+  'herbStress',
+  'herb_stress',
+];
+
 const adaptSnapshot = (snapshot: EcoSnapshot | null): EcoSnapshot | null => {
   if (!snapshot) return null;
   return {
@@ -339,6 +400,16 @@ const adaptSnapshot = (snapshot: EcoSnapshot | null): EcoSnapshot | null => {
     S: snapshot.S ?? pickLayer(snapshot, ['surface', 'S']),
     W: snapshot.W ?? pickLayer(snapshot, ['water', 'W']),
     F: snapshot.F ?? pickLayer(snapshot, ['flow', 'F']),
+    M: snapshot.M ?? pickLayer(snapshot, moistureKeys),
+    N: snapshot.N ?? pickLayer(snapshot, nutrientKeys),
+    moisture: snapshot.moisture ?? pickLayer(snapshot, moistureKeys),
+    nutrient: snapshot.nutrient ?? pickLayer(snapshot, nutrientKeys),
+    plantType: snapshot.plantType ?? pickLayer(snapshot, plantTypeKeys),
+    plantBiomass:
+      snapshot.plantBiomass ?? pickLayer(snapshot, plantBiomassKeys),
+    plantMaturity:
+      snapshot.plantMaturity ?? pickLayer(snapshot, plantMaturityKeys),
+    plantStress: snapshot.plantStress ?? pickLayer(snapshot, plantStressKeys),
     hydrologySource:
       snapshot.hydrologySource ?? pickLayer(snapshot, ['hydrologySource']),
     hydrologyInflow:
@@ -387,6 +458,45 @@ const layerAverage = (layer: MatrixLayer, width: number, height: number) => {
   return count ? sum / count : null;
 };
 
+const layerSum = (layer: MatrixLayer, width: number, height: number) => {
+  if (!layer) return null;
+  let sum = 0;
+  let count = 0;
+  for (let y = 0; y < height; y += 1) {
+    for (let x = 0; x < width; x += 1) {
+      const value = Number(readCell(layer, x, y, width));
+      if (Number.isFinite(value)) {
+        sum += value;
+        count += 1;
+      }
+    }
+  }
+  return count ? sum : null;
+};
+
+const layerActiveCellCount = (
+  layer: MatrixLayer,
+  width: number,
+  height: number,
+) => {
+  if (!layer) return null;
+  let count = 0;
+  for (let y = 0; y < height; y += 1) {
+    for (let x = 0; x < width; x += 1) {
+      if (isActivePlantValue(readCell(layer, x, y, width))) count += 1;
+    }
+  }
+  return count;
+};
+
+const isActivePlantValue = (value: unknown) => {
+  if (value === null || value === undefined || value === false) return false;
+  const numeric = Number(value);
+  if (Number.isFinite(numeric)) return numeric > 0.01;
+  const key = String(value).toLowerCase();
+  return key !== '' && key !== 'none' && key !== 'empty' && key !== 'bare';
+};
+
 const metricValue = (
   metrics: Record<string, unknown> | null | undefined,
   keys: string[],
@@ -415,8 +525,34 @@ const buildMetricsHistory = (
   const mapped = source.map((item, index) => ({
     tick: Number(item.tick ?? index),
     totalWater: historyValue(item, ['totalWater', 'waterTotal', 'water']),
+    avgMoisture: historyValue(item, [
+      'avgMoisture',
+      'meanMoisture',
+      'moisture',
+      'M',
+    ]),
+    avgNutrient: historyValue(item, [
+      'avgNutrient',
+      'meanNutrient',
+      'nutrient',
+      'nutrients',
+      'N',
+    ]),
     riverCells: historyValue(item, ['riverCells', 'rivers']),
     lakeCells: historyValue(item, ['lakeCells', 'lakes']),
+    herbCells: historyValue(item, [
+      'herbCells',
+      'plantCells',
+      'vegetatedCells',
+      'plants',
+      'herbs',
+    ]),
+    herbBiomass: historyValue(item, [
+      'herbBiomass',
+      'plantBiomass',
+      'totalBiomass',
+      'biomass',
+    ]),
   }));
 
   if (mapped.length) return mapped;
@@ -424,12 +560,22 @@ const buildMetricsHistory = (
   const width = snapshot?.width ?? 64;
   const height = snapshot?.height ?? 64;
   const avgWater = layerAverage(snapshot?.W, width, height);
+  const avgMoisture = layerAverage(snapshot?.M ?? snapshot?.moisture, width, height);
+  const avgNutrient = layerAverage(snapshot?.N ?? snapshot?.nutrient, width, height);
+  const herbCells =
+    layerActiveCellCount(snapshot?.plantType, width, height) ??
+    layerActiveCellCount(snapshot?.plantBiomass, width, height);
+  const herbBiomass = layerSum(snapshot?.plantBiomass, width, height);
   return [
     {
       tick: Number(snapshot?.tick ?? 0),
       totalWater: avgWater === null ? null : avgWater * width * height,
+      avgMoisture,
+      avgNutrient,
       riverCells: null,
       lakeCells: null,
+      herbCells,
+      herbBiomass,
     },
   ];
 };
@@ -447,12 +593,53 @@ const buildMetrics = (
     metricValue(sourceMetrics, ['flowThrough', 'flow']) ??
     layerAverage(snapshot?.F ?? snapshot?.flowMemory, width, height);
   const standing = layerAverage(snapshot?.standingWaterMemory, width, height);
+  const moisture =
+    metricValue(sourceMetrics, ['avgMoisture', 'meanMoisture', 'moisture', 'M']) ??
+    layerAverage(snapshot?.M ?? snapshot?.moisture, width, height);
+  const nutrient =
+    metricValue(sourceMetrics, [
+      'avgNutrient',
+      'meanNutrient',
+      'nutrient',
+      'nutrients',
+      'N',
+    ]) ?? layerAverage(snapshot?.N ?? snapshot?.nutrient, width, height);
+  const herbCells =
+    metricValue(sourceMetrics, [
+      'herbCells',
+      'plantCells',
+      'vegetatedCells',
+      'plants',
+      'herbs',
+    ]) ??
+    layerActiveCellCount(snapshot?.plantType, width, height) ??
+    layerActiveCellCount(snapshot?.plantBiomass, width, height);
+  const herbBiomass =
+    metricValue(sourceMetrics, [
+      'herbBiomass',
+      'plantBiomass',
+      'totalBiomass',
+      'biomass',
+    ]) ?? layerSum(snapshot?.plantBiomass, width, height);
 
   return [
     { label: 'Tick', value: formatValue(sourceMetrics?.tick ?? snapshot?.tick ?? 0) },
     { label: 'Season', value: formatValue(snapshot?.season ?? '-') },
     { label: 'Avg Water', value: water === null ? '-' : water.toFixed(3) },
+    {
+      label: 'Moisture',
+      value: moisture === null ? '-' : moisture.toFixed(3),
+    },
+    {
+      label: 'Nutrient',
+      value: nutrient === null ? '-' : nutrient.toFixed(3),
+    },
     { label: 'Avg Flow', value: flow === null ? '-' : flow.toFixed(3) },
+    { label: 'Herbs', value: formatValue(herbCells ?? '-') },
+    {
+      label: 'Herb Biomass',
+      value: herbBiomass === null ? '-' : herbBiomass.toFixed(1),
+    },
     {
       label: 'Rivers',
       value: formatValue(sourceMetrics?.riverCells ?? '-'),
@@ -520,6 +707,48 @@ const buildInspectorValues = (
       ),
     },
     {
+      label: 'M',
+      value: formatValue(
+        firstPresent(workerCell, moistureKeys) ??
+          readCell(pickLayer(snapshot, moistureKeys), x, y, width),
+      ),
+    },
+    {
+      label: 'N',
+      value: formatValue(
+        firstPresent(workerCell, nutrientKeys) ??
+          readCell(pickLayer(snapshot, nutrientKeys), x, y, width),
+      ),
+    },
+    {
+      label: 'Plant',
+      value: formatValue(
+        firstPresent(workerCell, plantTypeKeys) ??
+          readCell(pickLayer(snapshot, plantTypeKeys), x, y, width),
+      ),
+    },
+    {
+      label: 'Biomass',
+      value: formatValue(
+        firstPresent(workerCell, plantBiomassKeys) ??
+          readCell(pickLayer(snapshot, plantBiomassKeys), x, y, width),
+      ),
+    },
+    {
+      label: 'Maturity',
+      value: formatValue(
+        firstPresent(workerCell, plantMaturityKeys) ??
+          readCell(pickLayer(snapshot, plantMaturityKeys), x, y, width),
+      ),
+    },
+    {
+      label: 'Stress',
+      value: formatValue(
+        firstPresent(workerCell, plantStressKeys) ??
+          readCell(pickLayer(snapshot, plantStressKeys), x, y, width),
+      ),
+    },
+    {
       label: 'F',
       value: formatValue(
         workerCell?.flow ?? workerCell?.F ?? readCell(snapshot.F, x, y, width),
@@ -579,6 +808,17 @@ const buildInspectorValues = (
 
 const getRecord = (value: unknown): Record<string, unknown> | null =>
   value && typeof value === 'object' ? (value as Record<string, unknown>) : null;
+
+const firstPresent = (
+  record: Record<string, unknown> | null | undefined,
+  keys: string[],
+) => {
+  if (!record) return undefined;
+  for (const key of keys) {
+    if (record[key] !== undefined) return record[key];
+  }
+  return undefined;
+};
 
 const formatBudgetValue = (
   snapshot: EcoSnapshot,

@@ -8,8 +8,12 @@ interface MetricItem {
 interface MetricHistoryPoint {
   tick: number;
   totalWater: number | null;
+  avgMoisture?: number | null;
+  avgNutrient?: number | null;
   riverCells: number | null;
   lakeCells: number | null;
+  herbCells?: number | null;
+  herbBiomass?: number | null;
 }
 
 interface MetricsPanelProps {
@@ -19,10 +23,11 @@ interface MetricsPanelProps {
 
 const seriesConfig = [
   { key: 'totalWater', label: 'Water', color: '#58a6ff' },
-  { key: 'riverCells', label: 'Rivers', color: '#45d483' },
-  { key: 'lakeCells', label: 'Lakes', color: '#f0c36a' },
+  { key: 'avgMoisture', label: 'Moisture', color: '#5fb6d6' },
+  { key: 'avgNutrient', label: 'Nutrient', color: '#dcb455' },
+  { key: 'herbBiomass', label: 'Herb biomass', color: '#72d86b' },
 ] satisfies Array<{
-  key: keyof Pick<MetricHistoryPoint, 'totalWater' | 'riverCells' | 'lakeCells'>;
+  key: keyof MetricHistoryPoint;
   label: string;
   color: string;
 }>;

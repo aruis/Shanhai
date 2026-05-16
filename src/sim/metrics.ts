@@ -1,10 +1,13 @@
-import { BaseTerrain, Metrics, SimState, Surface } from "./types";
+import { BaseTerrain, Metrics, PlantType, SimState, Surface } from "./types";
 import { seasonForTick } from "./hydrology";
 
 export function collectMetrics(state: SimState): Metrics {
   const components = updateHydrologyComponents(state);
   let totalWater = 0;
   let totalMoisture = 0;
+  let totalNutrient = 0;
+  let herbCells = 0;
+  let herbBiomass = 0;
   let dryCells = 0;
   let wetCells = 0;
   let riverCells = 0;
@@ -17,6 +20,11 @@ export function collectMetrics(state: SimState): Metrics {
     const water = state.water[i];
     totalWater += water;
     totalMoisture += state.moisture[i];
+    totalNutrient += state.nutrient[i];
+    if (state.plantType[i] === PlantType.HERB) {
+      herbCells++;
+      herbBiomass += state.plantBiomass[i];
+    }
     flowThrough += state.flow[i];
     if (water > maxWater) maxWater = water;
     if (state.base[i] === BaseTerrain.OCEAN) oceanCells++;
@@ -42,6 +50,11 @@ export function collectMetrics(state: SimState): Metrics {
     season: seasonForTick(state.tick),
     totalWater,
     totalMoisture,
+    totalNutrient,
+    herbCells,
+    herbBiomass,
+    meanMoisture: totalMoisture / state.moisture.length,
+    meanNutrient: totalNutrient / state.nutrient.length,
     oceanSink: state.lastStats.oceanSink,
     source: state.lastStats.source,
     evaporation: state.lastStats.evaporation,

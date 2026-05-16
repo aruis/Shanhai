@@ -6,6 +6,12 @@ import {
   flowArrowColor,
   flowColor,
   heightColor,
+  moistureAlpha,
+  moistureColor,
+  nutrientAlpha,
+  nutrientColor,
+  plantAlpha,
+  plantColor,
   surfaceColor,
   waterAlpha,
   waterColor,
@@ -28,6 +34,14 @@ export interface EcoSnapshot {
   S?: MatrixLayer;
   W?: MatrixLayer;
   F?: MatrixLayer;
+  M?: MatrixLayer;
+  N?: MatrixLayer;
+  moisture?: MatrixLayer;
+  nutrient?: MatrixLayer;
+  plantType?: MatrixLayer;
+  plantBiomass?: MatrixLayer;
+  plantMaturity?: MatrixLayer;
+  plantStress?: MatrixLayer;
   flowMemory?: MatrixLayer;
   flowDirection?: MatrixLayer;
   dominantFlowDirection?: MatrixLayer;
@@ -44,6 +58,9 @@ export interface LayerState {
   surface: boolean;
   water: boolean;
   flow: boolean;
+  moisture: boolean;
+  nutrient: boolean;
+  plants: boolean;
   flowArrows: boolean;
   components: boolean;
 }
@@ -267,6 +284,41 @@ export function PixiViewport({
       'lakeComponent',
       'lake_component',
     ]);
+    const moistureLayer = pickSnapshotLayer(currentSnapshot, [
+      'M',
+      'moisture',
+      'soilMoisture',
+      'soil_moisture',
+      'moistureMap',
+      'moisture_map',
+    ]);
+    const nutrientLayer = pickSnapshotLayer(currentSnapshot, [
+      'N',
+      'nutrient',
+      'nutrients',
+      'soilNutrient',
+      'soilNutrients',
+      'soil_nutrient',
+      'soil_nutrients',
+      'nutrientMap',
+      'nutrient_map',
+    ]);
+    const plantTypeLayer = pickSnapshotLayer(currentSnapshot, [
+      'plantType',
+      'plant_type',
+      'plants',
+      'plant',
+      'herb',
+      'herbs',
+      'vegetation',
+    ]);
+    const plantBiomassLayer = pickSnapshotLayer(currentSnapshot, [
+      'plantBiomass',
+      'plant_biomass',
+      'biomass',
+      'herbBiomass',
+      'herb_biomass',
+    ]);
 
     for (let y = 0; y < height; y += 1) {
       for (let x = 0; x < width; x += 1) {
@@ -295,6 +347,49 @@ export function PixiViewport({
             grid
               .rect(px, py, cellSize, cellSize)
               .fill({ color, alpha: waterAlpha(water) });
+          }
+        }
+
+        if (currentLayers.moisture) {
+          const moisture = readCell(moistureLayer, x, y, width);
+          const color = moistureColor(moisture);
+          if (color !== null) {
+            grid
+              .rect(px, py, cellSize, cellSize)
+              .fill({ color, alpha: moistureAlpha(moisture) });
+          }
+        }
+
+        if (currentLayers.nutrient) {
+          const nutrient = readCell(nutrientLayer, x, y, width);
+          const color = nutrientColor(nutrient);
+          if (color !== null) {
+            const inset = Math.max(0, Math.floor(cellSize * 0.12));
+            grid
+              .rect(
+                px + inset,
+                py + inset,
+                Math.max(1, cellSize - inset * 2),
+                Math.max(1, cellSize - inset * 2),
+              )
+              .fill({ color, alpha: nutrientAlpha(nutrient) });
+          }
+        }
+
+        if (currentLayers.plants) {
+          const plantType = readCell(plantTypeLayer, x, y, width);
+          const biomass = readCell(plantBiomassLayer, x, y, width);
+          const color = plantColor(plantType, biomass);
+          if (color !== null) {
+            const inset = Math.max(1, Math.floor(cellSize * 0.22));
+            grid
+              .rect(
+                px + inset,
+                py + inset,
+                Math.max(1, cellSize - inset * 2),
+                Math.max(1, cellSize - inset * 2),
+              )
+              .fill({ color, alpha: plantAlpha(biomass) });
           }
         }
 

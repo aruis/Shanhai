@@ -1,5 +1,5 @@
 import { idx } from "./indexing";
-import { BaseTerrain, HydrologyStats, SimState, Surface } from "./types";
+import { BaseTerrain, HydrologyStats, PlantType, SimState, Surface } from "./types";
 
 const WIDTH = 64;
 const HEIGHT = 64;
@@ -36,6 +36,11 @@ function makeState(name: string, seed: number): SimState {
     surface: new Uint8Array(size),
     water: new Float64Array(size),
     moisture: new Float64Array(size),
+    nutrient: new Float64Array(size),
+    plantType: new Uint8Array(size),
+    plantBiomass: new Float64Array(size),
+    plantMaturity: new Float64Array(size),
+    plantStress: new Float64Array(size),
     flow: new Float64Array(size),
     hydrologySource: new Float64Array(size),
     hydrologyInflow: new Float64Array(size),
@@ -63,6 +68,7 @@ function setCell(state: SimState, x: number, y: number, height: number): void {
   state.base[i] = baseForHeight(height);
   state.surface[i] = height === 0 ? Surface.DRY : Surface.DRY;
   state.moisture[i] = height === 0 ? 1 : 0.03;
+  state.nutrient[i] = initialNutrient(height, state.seed, i);
 }
 
 function finalizeOceanSurface(state: SimState): SimState {
@@ -71,6 +77,11 @@ function finalizeOceanSurface(state: SimState): SimState {
       state.surface[i] = Surface.WET;
       state.water[i] = 0;
       state.moisture[i] = 1;
+      state.nutrient[i] = 0;
+      state.plantType[i] = PlantType.EMPTY;
+      state.plantBiomass[i] = 0;
+      state.plantMaturity[i] = 0;
+      state.plantStress[i] = 0;
     }
   }
   return state;
@@ -93,6 +104,7 @@ export function slopeToOcean(seed = 101): SimState {
   }
   state.springs.push({ index: idx(4, 32, WIDTH) });
   state.water[idx(4, 32, WIDTH)] = 0.5;
+  seedInitialHerbs(state, (x, y) => x >= 10 && x < 40 && Math.abs(y - 32) <= 5);
   return finalizeOceanSurface(state);
 }
 
@@ -113,6 +125,11 @@ export function basinLake(seed = 202): SimState {
     }
   }
   state.springs.push({ index: idx(31, 17, WIDTH) }, { index: idx(36, 18, WIDTH) });
+  seedInitialHerbs(state, (x, y) => {
+    const dx = x - cx;
+    const dy = y - cy;
+    return Math.sqrt(dx * dx + dy * dy) < 16;
+  });
   return finalizeOceanSurface(state);
 }
 
@@ -136,6 +153,11 @@ export function basinSpill(seed = 303): SimState {
     }
   }
   state.springs.push({ index: idx(5, 32, WIDTH) });
+  seedInitialHerbs(state, (x, y) => {
+    const dx = x - cx;
+    const dy = y - cy;
+    return Math.sqrt(dx * dx + dy * dy) < 15 || (x >= 42 && x < 58 && y >= 29 && y <= 35);
+  });
   return finalizeOceanSurface(state);
 }
 
@@ -146,3 +168,34 @@ export const scenarios = {
 };
 
 export type ScenarioName = keyof typeof scenarios;
+
+function initialNutrient(height: number, seed: number, index: number): number {
+  if (height <= 0) return 0;
+  const base = height === 1 ? 0.48 : height === 2 ? 0.36 : height === 3 ? 0.24 : 0.16;
+  return Math.min(1.5, base + hashUnit(seed, index) * 0.08);
+}
+
+function seedInitialHerbs(state: SimState, inSeedZone: (x: number, y: number) => boolean): void {
+  for (let y = 0; y < state.height; y++) {
+    for (let x = 0; x < state.width; x++) {
+      const i = idx(x, y, state.width);
+      if (state.base[i] === BaseTerrain.OCEAN || !inSeedZone(x, y)) continue;
+      if (state.base[i] !== BaseTerrain.PLAIN && state.base[i] !== BaseTerrain.LOW_HILL) continue;
+      if (hashUnit(state.seed ^ 0x6d2b79f5, i) > 0.18) continue;
+      state.plantType[i] = PlantType.HERB;
+      state.plantBiomass[i] = 0.12;
+      state.plantMaturity[i] = 0.15;
+      state.plantStress[i] = 0;
+    }
+  }
+}
+
+function hashUnit(seed: number, index: number): number {
+  let x = Math.imul(index + 0x9e3779b9, 0x85ebca6b) ^ seed;
+  x ^= x >>> 16;
+  x = Math.imul(x, 0x7feb352d);
+  x ^= x >>> 15;
+  x = Math.imul(x, 0x846ca68b);
+  x ^= x >>> 16;
+  return (x >>> 0) / 0xffffffff;
+}

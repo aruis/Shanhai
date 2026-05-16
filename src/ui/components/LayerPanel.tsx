@@ -2,6 +2,9 @@ import type { CSSProperties } from 'react';
 import type { LayerState } from '../../render/PixiViewport';
 
 type WorkbenchLayerState = LayerState & {
+  moisture?: boolean;
+  nutrient?: boolean;
+  plants?: boolean;
   flowArrows?: boolean;
   components?: boolean;
 };
@@ -15,6 +18,9 @@ const layerLabels: Array<[keyof WorkbenchLayerState, string]> = [
   ['height', 'Height'],
   ['surface', 'Surface'],
   ['water', 'Water'],
+  ['moisture', 'Moisture'],
+  ['nutrient', 'Nutrient'],
+  ['plants', 'Plants'],
   ['flow', 'Flow'],
   ['flowArrows', 'Flow arrows'],
   ['components', 'Components'],

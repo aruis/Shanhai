@@ -53,6 +53,67 @@ export const flowAlpha = (value: CellValue): number => {
   return 0.16 + clamp01(amount / 6) * 0.48;
 };
 
+export const moistureColor = (value: CellValue): number | null => {
+  const amount = Number(value ?? 0);
+  if (!Number.isFinite(amount) || amount <= 0.01) return null;
+  const t = clamp01(amount);
+  return rgb(lerp(74, 42, t), lerp(88, 146, t), lerp(91, 205, t));
+};
+
+export const nutrientColor = (value: CellValue): number | null => {
+  const amount = Number(value ?? 0);
+  if (!Number.isFinite(amount) || amount <= 0.01) return null;
+  const t = clamp01(amount);
+  return rgb(lerp(88, 226, t), lerp(76, 181, t), lerp(49, 85, t));
+};
+
+export const plantColor = (
+  typeValue: CellValue,
+  biomassValue?: CellValue,
+): number | null => {
+  const typeKey = String(typeValue ?? '').toLowerCase();
+  const typeNumber = Number(typeValue);
+  const biomass = Number(biomassValue ?? typeValue ?? 0);
+
+  if (
+    (typeValue === null || typeValue === undefined || typeValue === false || typeKey === '') &&
+    (!Number.isFinite(biomass) || biomass <= 0.01)
+  ) {
+    return null;
+  }
+
+  if (typeKey === 'none' || typeKey === 'empty' || typeKey === 'bare') return null;
+  if (Number.isFinite(typeNumber) && typeNumber <= 0 && (!Number.isFinite(biomass) || biomass <= 0.01)) {
+    return null;
+  }
+
+  if (typeKey.includes('herb') || typeKey.includes('grass') || typeKey === '1') {
+    const t = clamp01(Number.isFinite(biomass) ? biomass : 0.8);
+    return rgb(lerp(92, 122, t), lerp(142, 214, t), lerp(71, 93, t));
+  }
+
+  if (typeKey.includes('shrub') || typeKey === '2') return 0x8fbf5a;
+  if (typeKey.includes('tree') || typeKey === '3') return 0x4f9a5b;
+
+  const t = clamp01(Number.isFinite(biomass) ? biomass : 0.65);
+  return rgb(lerp(99, 132, t), lerp(154, 221, t), lerp(83, 99, t));
+};
+
+export const moistureAlpha = (value: CellValue): number => {
+  const amount = Number(value ?? 0);
+  return 0.16 + clamp01(amount) * 0.44;
+};
+
+export const nutrientAlpha = (value: CellValue): number => {
+  const amount = Number(value ?? 0);
+  return 0.14 + clamp01(amount) * 0.38;
+};
+
+export const plantAlpha = (biomassValue?: CellValue): number => {
+  const biomass = Number(biomassValue ?? 0.6);
+  return 0.34 + clamp01(Number.isFinite(biomass) ? biomass : 0.6) * 0.46;
+};
+
 const componentPalette = [
   0x4cc9f0,
   0x80d56f,

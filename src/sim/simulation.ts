@@ -1,5 +1,6 @@
 import { seasonForTick, stepHydrology } from "./hydrology";
 import { stableDefaultParams } from "./params";
+import { stepPlants } from "./plants";
 import { scenarios, ScenarioName } from "./scenarios";
 import { Metrics, Params, SimState } from "./types";
 import { collectMetrics } from "./metrics";
@@ -24,6 +25,11 @@ export interface SimSnapshot {
   S: Uint8Array;
   W: Float64Array;
   M: Float64Array;
+  N: Float64Array;
+  plantType: Uint8Array;
+  plantBiomass: Float64Array;
+  plantMaturity: Float64Array;
+  plantStress: Float64Array;
   F: Float64Array;
   hydrologySource: Float64Array;
   hydrologyInflow: Float64Array;
@@ -74,7 +80,10 @@ export function createSimulation(
       return state;
     },
     step(ticks = 1) {
-      for (let i = 0; i < ticks; i++) stepHydrology(state, resolvedParams);
+      for (let i = 0; i < ticks; i++) {
+        stepHydrology(state, resolvedParams);
+        stepPlants(state, resolvedParams);
+      }
       return state;
     },
     metrics() {
@@ -96,6 +105,11 @@ export function createSimulation(
         S: state.surface,
         W: state.water,
         M: state.moisture,
+        N: state.nutrient,
+        plantType: state.plantType,
+        plantBiomass: state.plantBiomass,
+        plantMaturity: state.plantMaturity,
+        plantStress: state.plantStress,
         F: state.flow,
         hydrologySource: state.hydrologySource,
         hydrologyInflow: state.hydrologyInflow,
@@ -138,6 +152,11 @@ export function createSimulation(
         surface: state.surface[i],
         water: state.water[i],
         moisture: state.moisture[i],
+        nutrient: state.nutrient[i],
+        plantType: state.plantType[i],
+        plantBiomass: state.plantBiomass[i],
+        plantMaturity: state.plantMaturity[i],
+        plantStress: state.plantStress[i],
         flow: state.flow[i],
         hydrologySource: state.hydrologySource[i],
         hydrologyInflow: state.hydrologyInflow[i],

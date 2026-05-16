@@ -2,34 +2,37 @@
 
 Shanhai is a web-based Eco-CA workbench for exploring semi-3D ecological cellular automata.
 
-The current prototype focuses on the hydrology MVP:
+The current prototype focuses on the hydrology-to-grass ecology loop:
 
 - terrain and surface layers
 - spring-fed water injection
 - local water flow
 - ocean sink, evaporation, and seepage
 - river and lake emergence
+- soil moisture and nutrients
+- herbaceous growth, seeding, and winter die-off
 - fixed validation scenarios
 - PixiJS grid visualization
 - Web Worker simulation loop
 
 ## Current Milestone
 
-### M1: Hydrology Debug Workbench
+### M2: Moisture, Nutrients, and Herbaceous Plants
 
-The current milestone turns the initial hydrology MVP into a usable debugging workbench:
+The current milestone turns the water model into the first ecological feedback loop:
 
 - per-cell hydrology budget inspection
 - flow direction arrows
 - river and lake connected-component highlighting
 - hydrology parameter presets
-- metric history curves for water, river cells, and lake cells
-- deterministic hydrology validation tests
+- moisture, nutrient, and plant visualization layers
+- metric history curves for water, moisture, nutrients, and herb biomass
+- deterministic hydrology and plant validation tests
 
 ## Roadmap
 
-- **M1 Hydrology Debug Workbench:** make water behavior observable, tunable, and testable.
-- **M2 Moisture, Nutrients, and Herbaceous Plants:** add soil moisture, nutrients, grass growth, seeding, winter die-off, and nutrient return.
+- **M1 Hydrology Debug Workbench:** make water behavior observable, tunable, and testable. Done.
+- **M2 Moisture, Nutrients, and Herbaceous Plants:** add soil moisture, nutrients, grass growth, seeding, winter die-off, and nutrient return. In progress.
 - **M3 Woody Plants and Terrain Zoning:** add slow-growing woody plants, low-hill forest bands, and plant competition.
 - **M4 Animal Survival:** add local herbivore movement, thirst, hunger, grazing, death, and nutrient return.
 - **M5 Reproduction and Seasonal Population Cycles:** add age, sex, reproduction cooldown, autumn energy storage, winter shelter, and population oscillation metrics.

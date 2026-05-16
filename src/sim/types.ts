@@ -15,6 +15,11 @@ export enum Surface {
   BARREN = 5,
 }
 
+export enum PlantType {
+  EMPTY = 0,
+  HERB = 1,
+}
+
 export type Season = "spring" | "summer" | "autumn" | "winter";
 
 export interface Spring {
@@ -42,6 +47,11 @@ export interface SimState {
   surface: Uint8Array;
   water: Float64Array;
   moisture: Float64Array;
+  nutrient: Float64Array;
+  plantType: Uint8Array;
+  plantBiomass: Float64Array;
+  plantMaturity: Float64Array;
+  plantStress: Float64Array;
   flow: Float64Array;
   hydrologySource: Float64Array;
   hydrologyInflow: Float64Array;
@@ -93,6 +103,20 @@ export interface Params {
   lakeSpillEpsilon: number;
   lakeSpillRate: number;
   lakeSpillMax: number;
+  moistureMax: number;
+  nutrientMax: number;
+  herbBiomassMax: number;
+  herbGrowMoistureMin: number;
+  herbGrowNutrientMin: number;
+  herbGrowthRate: number;
+  herbMoistureUse: number;
+  herbNutrientUse: number;
+  herbMaturityRate: number;
+  herbSeedBiomassThreshold: number;
+  herbSeedCost: number;
+  herbSeedBiomass: number;
+  herbSeedNutrientUse: number;
+  herbDeathNutrientRatio: number;
 }
 
 export interface Metrics {
@@ -100,6 +124,11 @@ export interface Metrics {
   season: Season;
   totalWater: number;
   totalMoisture: number;
+  totalNutrient: number;
+  herbCells: number;
+  herbBiomass: number;
+  meanMoisture: number;
+  meanNutrient: number;
   oceanSink: number;
   source: number;
   evaporation: number;
