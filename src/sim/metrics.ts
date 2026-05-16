@@ -9,6 +9,8 @@ export function collectMetrics(state: SimState): Metrics {
   let totalNutrient = 0;
   let herbCells = 0;
   let herbBiomass = 0;
+  let woodyCells = 0;
+  let woodyBiomass = 0;
   let dryCells = 0;
   let wetCells = 0;
   let riverCells = 0;
@@ -25,6 +27,9 @@ export function collectMetrics(state: SimState): Metrics {
     if (state.plantType[i] === PlantType.HERB) {
       herbCells++;
       herbBiomass += state.plantBiomass[i];
+    } else if (state.plantType[i] === PlantType.WOODY) {
+      woodyCells++;
+      woodyBiomass += state.plantBiomass[i];
     }
     flowThrough += state.flow[i];
     if (water > maxWater) maxWater = water;
@@ -54,6 +59,8 @@ export function collectMetrics(state: SimState): Metrics {
     totalNutrient,
     herbCells,
     herbBiomass,
+    woodyCells,
+    woodyBiomass,
     meanMoisture: totalMoisture / state.moisture.length,
     meanNutrient: totalNutrient / state.nutrient.length,
     oceanSink: state.lastStats.oceanSink,
@@ -73,6 +80,7 @@ export function collectMetrics(state: SimState): Metrics {
     largestLakeSize: components.largestLakeSize,
     largestRiverSize: components.largestRiverSize,
     plantableLandCells: grassland.plantableLandCells,
+    lowHillPlantableCells: grassland.lowHillPlantableCells,
     riparianLandCells: grassland.riparianLandCells,
     farLandCells: grassland.farLandCells,
     riparianMeanMoisture: grassland.riparianMeanMoisture,
@@ -82,11 +90,15 @@ export function collectMetrics(state: SimState): Metrics {
     riparianHerbBiomass: grassland.riparianHerbBiomass,
     farHerbBiomass: grassland.farHerbBiomass,
     grassCoverage: regionMean(herbCells, grassland.plantableLandCells),
+    woodyCoverage: regionMean(woodyCells, grassland.plantableLandCells),
+    lowHillWoodyCoverage: regionMean(grassland.lowHillWoodyCells, grassland.lowHillPlantableCells),
   };
 }
 
 interface GrasslandMetrics {
   plantableLandCells: number;
+  lowHillPlantableCells: number;
+  lowHillWoodyCells: number;
   riparianLandCells: number;
   farLandCells: number;
   riparianMeanMoisture: number;
@@ -106,12 +118,18 @@ function collectGrasslandMetrics(state: SimState): GrasslandMetrics {
   }
 
   let plantableLandCells = 0;
+  let lowHillPlantableCells = 0;
+  let lowHillWoodyCells = 0;
   const riparian = createRegionAccumulator();
   const far = createRegionAccumulator();
 
   for (let i = 0; i < state.surface.length; i++) {
     if (!isPlantableLand(state, i)) continue;
     plantableLandCells++;
+    if (state.base[i] === BaseTerrain.LOW_HILL) {
+      lowHillPlantableCells++;
+      if (state.plantType[i] === PlantType.WOODY) lowHillWoodyCells++;
+    }
 
     const distance = distanceToNearestCell(state, i, waterCells);
     if (distance === 1) addRegionCell(riparian, state, i);
@@ -120,6 +138,8 @@ function collectGrasslandMetrics(state: SimState): GrasslandMetrics {
 
   return {
     plantableLandCells,
+    lowHillPlantableCells,
+    lowHillWoodyCells,
     riparianLandCells: riparian.count,
     farLandCells: far.count,
     riparianMeanMoisture: regionMean(riparian.moisture, riparian.count),
@@ -161,6 +181,7 @@ function createRegionAccumulator() {
     moisture: 0,
     nutrient: 0,
     herbBiomass: 0,
+    woodyBiomass: 0,
   };
 }
 
@@ -172,7 +193,11 @@ function addRegionCell(
   region.count++;
   region.moisture += state.moisture[index];
   region.nutrient += state.nutrient[index];
-  region.herbBiomass += state.plantBiomass[index];
+  if (state.plantType[index] === PlantType.HERB) {
+    region.herbBiomass += state.plantBiomass[index];
+  } else if (state.plantType[index] === PlantType.WOODY) {
+    region.woodyBiomass += state.plantBiomass[index];
+  }
 }
 
 function regionMean(sum: number, count: number): number {

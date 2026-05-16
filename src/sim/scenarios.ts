@@ -105,6 +105,7 @@ export function slopeToOcean(seed = 101): SimState {
   state.springs.push({ index: idx(4, 32, WIDTH) });
   state.water[idx(4, 32, WIDTH)] = 0.5;
   seedInitialHerbs(state, (x, y) => x >= 10 && x < 40 && Math.abs(y - 32) <= 5);
+  seedInitialWoodies(state, (x, y) => x >= 22 && x < 36 && Math.abs(y - 32) >= 5);
   return finalizeOceanSurface(state);
 }
 
@@ -129,6 +130,12 @@ export function basinLake(seed = 202): SimState {
     const dx = x - cx;
     const dy = y - cy;
     return Math.sqrt(dx * dx + dy * dy) < 16;
+  });
+  seedInitialWoodies(state, (x, y) => {
+    const dx = x - cx;
+    const dy = y - cy;
+    const d = Math.sqrt(dx * dx + dy * dy);
+    return d >= 13 && d < 19;
   });
   return finalizeOceanSurface(state);
 }
@@ -157,6 +164,12 @@ export function basinSpill(seed = 303): SimState {
     const dx = x - cx;
     const dy = y - cy;
     return Math.sqrt(dx * dx + dy * dy) < 15 || (x >= 42 && x < 58 && y >= 29 && y <= 35);
+  });
+  seedInitialWoodies(state, (x, y) => {
+    const dx = x - cx;
+    const dy = y - cy;
+    const d = Math.sqrt(dx * dx + dy * dy);
+    return d >= 12 && d < 18;
   });
   return finalizeOceanSurface(state);
 }
@@ -193,6 +206,14 @@ export function riverValleyGrassland(seed = 404): SimState {
     },
     { density: 0.1, biomass: 0.08, maturity: 0.08 },
   );
+  seedInitialWoodies(
+    state,
+    (x, y) => {
+      const center = valleyCenterY(x);
+      return x >= 18 && x < 48 && Math.abs(y - center) >= 6 && Math.abs(y - center) <= 12;
+    },
+    { density: 0.035, biomass: 0.22, maturity: 0.2 },
+  );
   return finalizeOceanSurface(state);
 }
 
@@ -217,6 +238,12 @@ interface HerbSeedOptions {
   maturity?: number;
 }
 
+interface WoodySeedOptions {
+  density?: number;
+  biomass?: number;
+  maturity?: number;
+}
+
 function seedInitialHerbs(
   state: SimState,
   inSeedZone: (x: number, y: number) => boolean,
@@ -232,6 +259,28 @@ function seedInitialHerbs(
       if (state.base[i] !== BaseTerrain.PLAIN && state.base[i] !== BaseTerrain.LOW_HILL) continue;
       if (hashUnit(state.seed ^ 0x6d2b79f5, i) > density) continue;
       state.plantType[i] = PlantType.HERB;
+      state.plantBiomass[i] = biomass;
+      state.plantMaturity[i] = maturity;
+      state.plantStress[i] = 0;
+    }
+  }
+}
+
+function seedInitialWoodies(
+  state: SimState,
+  inSeedZone: (x: number, y: number) => boolean,
+  options: WoodySeedOptions = {},
+): void {
+  const density = options.density ?? 0.025;
+  const biomass = options.biomass ?? 0.2;
+  const maturity = options.maturity ?? 0.18;
+  for (let y = 0; y < state.height; y++) {
+    for (let x = 0; x < state.width; x++) {
+      const i = idx(x, y, state.width);
+      if (!inSeedZone(x, y)) continue;
+      if (state.base[i] !== BaseTerrain.LOW_HILL) continue;
+      if (hashUnit(state.seed ^ 0x1b873593, i) > density) continue;
+      state.plantType[i] = PlantType.WOODY;
       state.plantBiomass[i] = biomass;
       state.plantMaturity[i] = maturity;
       state.plantStress[i] = 0;

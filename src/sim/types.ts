@@ -18,6 +18,7 @@ export enum Surface {
 export enum PlantType {
   EMPTY = 0,
   HERB = 1,
+  WOODY = 2,
 }
 
 export type Season = "spring" | "summer" | "autumn" | "winter";
@@ -119,6 +120,20 @@ export interface Params {
   herbSeedBiomass: number;
   herbSeedNutrientUse: number;
   herbDeathNutrientRatio: number;
+  woodyBiomassMax: number;
+  woodyGrowMoistureMin: number;
+  woodyGrowNutrientMin: number;
+  woodyGrowthRate: number;
+  woodyMoistureUse: number;
+  woodyNutrientUse: number;
+  woodyMaturityRate: number;
+  woodySeedBiomassThreshold: number;
+  woodySeedCost: number;
+  woodySeedBiomass: number;
+  woodySeedNutrientUse: number;
+  woodyDeathNutrientRatio: number;
+  woodyHerbCompetitionBiomass: number;
+  woodyHerbReplacementBiomass: number;
 }
 
 export interface Metrics {
@@ -129,8 +144,13 @@ export interface Metrics {
   totalNutrient: number;
   herbCells: number;
   herbBiomass: number;
+  woodyCells: number;
+  woodyBiomass: number;
   grassCoverage: number;
+  woodyCoverage: number;
+  lowHillWoodyCoverage: number;
   plantableLandCells: number;
+  lowHillPlantableCells: number;
   riparianLandCells: number;
   farLandCells: number;
   riparianMeanMoisture: number;

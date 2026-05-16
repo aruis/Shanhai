@@ -40,6 +40,7 @@ export interface EcoSnapshot {
   nutrient?: MatrixLayer;
   plantType?: MatrixLayer;
   plantBiomass?: MatrixLayer;
+  woodyBiomass?: MatrixLayer;
   plantMaturity?: MatrixLayer;
   plantStress?: MatrixLayer;
   flowMemory?: MatrixLayer;
@@ -111,6 +112,14 @@ const componentKey = (value: CellValue) => {
   const numeric = Number(value);
   if (Number.isFinite(numeric) && numeric < 0) return null;
   return String(value);
+};
+
+const isActiveCellValue = (value: CellValue) => {
+  if (value === null || value === undefined || value === false) return false;
+  const numeric = Number(value);
+  if (Number.isFinite(numeric)) return numeric > 0.01;
+  const key = String(value).toLowerCase();
+  return key !== '' && key !== 'none' && key !== 'empty' && key !== 'bare';
 };
 
 const resolveDimensions = (snapshot: EcoSnapshot | null) => ({
@@ -315,9 +324,33 @@ export function PixiViewport({
     const plantBiomassLayer = pickSnapshotLayer(currentSnapshot, [
       'plantBiomass',
       'plant_biomass',
+      'grassBiomass',
+      'grass_biomass',
       'biomass',
       'herbBiomass',
       'herb_biomass',
+    ]);
+    const woodyBiomassLayer = pickSnapshotLayer(currentSnapshot, [
+      'woodyBiomass',
+      'woody_biomass',
+      'woodBiomass',
+      'wood_biomass',
+      'treeBiomass',
+      'tree_biomass',
+      'shrubBiomass',
+      'shrub_biomass',
+    ]);
+    const woodyPlantLayer = pickSnapshotLayer(currentSnapshot, [
+      'woodyPlantType',
+      'woody_plant_type',
+      'woodyPlants',
+      'woody_plants',
+      'woody',
+      'wood',
+      'trees',
+      'tree',
+      'shrubs',
+      'shrub',
     ]);
 
     for (let y = 0; y < height; y += 1) {
@@ -379,6 +412,9 @@ export function PixiViewport({
         if (currentLayers.plants) {
           const plantType = readCell(plantTypeLayer, x, y, width);
           const biomass = readCell(plantBiomassLayer, x, y, width);
+          const woodyBiomass =
+            readCell(woodyBiomassLayer, x, y, width) ??
+            readCell(woodyPlantLayer, x, y, width);
           const color = plantColor(plantType, biomass);
           if (color !== null) {
             const inset = Math.max(1, Math.floor(cellSize * 0.22));
@@ -390,6 +426,22 @@ export function PixiViewport({
                 Math.max(1, cellSize - inset * 2),
               )
               .fill({ color, alpha: plantAlpha(biomass) });
+          }
+          const woodyColor =
+            (woodyBiomassLayer || woodyPlantLayer) &&
+            isActiveCellValue(woodyBiomass)
+              ? plantColor('WOODY', woodyBiomass)
+              : null;
+          if (woodyColor !== null) {
+            const inset = Math.max(1, Math.floor(cellSize * 0.34));
+            grid
+              .rect(
+                px + inset,
+                py + inset,
+                Math.max(1, cellSize - inset * 2),
+                Math.max(1, cellSize - inset * 2),
+              )
+              .fill({ color: woodyColor, alpha: plantAlpha(woodyBiomass) });
           }
         }
 

@@ -87,13 +87,20 @@ export const plantColor = (
     return null;
   }
 
+  if (typeKey.includes('woody') || typeKey.includes('wood') || typeKey === '2') {
+    const t = clamp01(Number.isFinite(biomass) ? biomass : 0.7);
+    return rgb(lerp(128, 177, t), lerp(104, 150, t), lerp(58, 72, t));
+  }
+
+  if (typeKey.includes('shrub') || typeKey.includes('tree') || typeKey === '3') {
+    const t = clamp01(Number.isFinite(biomass) ? biomass : 0.75);
+    return rgb(lerp(108, 154, t), lerp(97, 137, t), lerp(55, 70, t));
+  }
+
   if (typeKey.includes('herb') || typeKey.includes('grass') || typeKey === '1') {
     const t = clamp01(Number.isFinite(biomass) ? biomass : 0.8);
     return rgb(lerp(92, 122, t), lerp(142, 214, t), lerp(71, 93, t));
   }
-
-  if (typeKey.includes('shrub') || typeKey === '2') return 0x8fbf5a;
-  if (typeKey.includes('tree') || typeKey === '3') return 0x4f9a5b;
 
   const t = clamp01(Number.isFinite(biomass) ? biomass : 0.65);
   return rgb(lerp(99, 132, t), lerp(154, 221, t), lerp(83, 99, t));

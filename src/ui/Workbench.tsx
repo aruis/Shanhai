@@ -371,9 +371,35 @@ const plantTypeKeys = [
 const plantBiomassKeys = [
   'plantBiomass',
   'plant_biomass',
+  'grassBiomass',
+  'grass_biomass',
   'biomass',
   'herbBiomass',
   'herb_biomass',
+];
+
+const woodyBiomassKeys = [
+  'woodyBiomass',
+  'woody_biomass',
+  'woodBiomass',
+  'wood_biomass',
+  'treeBiomass',
+  'tree_biomass',
+  'shrubBiomass',
+  'shrub_biomass',
+];
+
+const woodyPlantKeys = [
+  'woodyPlantType',
+  'woody_plant_type',
+  'woodyPlants',
+  'woody_plants',
+  'woody',
+  'wood',
+  'trees',
+  'tree',
+  'shrubs',
+  'shrub',
 ];
 
 const plantMaturityKeys = [
@@ -408,6 +434,8 @@ const adaptSnapshot = (snapshot: EcoSnapshot | null): EcoSnapshot | null => {
     plantType: snapshot.plantType ?? pickLayer(snapshot, plantTypeKeys),
     plantBiomass:
       snapshot.plantBiomass ?? pickLayer(snapshot, plantBiomassKeys),
+    woodyBiomass:
+      snapshot.woodyBiomass ?? pickLayer(snapshot, woodyBiomassKeys),
     plantMaturity:
       snapshot.plantMaturity ?? pickLayer(snapshot, plantMaturityKeys),
     plantStress: snapshot.plantStress ?? pickLayer(snapshot, plantStressKeys),
@@ -498,6 +526,27 @@ const isActivePlantValue = (value: unknown) => {
   return key !== '' && key !== 'none' && key !== 'empty' && key !== 'bare';
 };
 
+const isWoodyPlantValue = (value: unknown) => {
+  if (!isActivePlantValue(value)) return false;
+  const numeric = Number(value);
+  if (Number.isFinite(numeric)) return numeric === 2 || numeric === 3;
+  const key = String(value).toLowerCase();
+  return (
+    key.includes('woody') ||
+    key.includes('wood') ||
+    key.includes('tree') ||
+    key.includes('shrub')
+  );
+};
+
+const isGrassPlantValue = (value: unknown) => {
+  if (!isActivePlantValue(value)) return false;
+  const numeric = Number(value);
+  if (Number.isFinite(numeric)) return numeric === 1;
+  const key = String(value).toLowerCase();
+  return key.includes('grass') || key.includes('herb');
+};
+
 const isPlantableLand = (
   snapshot: EcoSnapshot,
   x: number,
@@ -583,8 +632,13 @@ const buildGrasslandSignal = (snapshot: EcoSnapshot | null) => {
   const moistureLayer = snapshot.M ?? snapshot.moisture;
   const nutrientLayer = snapshot.N ?? snapshot.nutrient;
   const biomassLayer = snapshot.plantBiomass;
+  const plantTypeLayer = snapshot.plantType;
   const grassLayer = snapshot.plantType ?? snapshot.plantBiomass;
-  if (!snapshot.B || !snapshot.S || !grassLayer) return null;
+  const woodyLayer =
+    snapshot.woodyBiomass ??
+    pickLayer(snapshot, woodyBiomassKeys) ??
+    pickLayer(snapshot, woodyPlantKeys);
+  if (!snapshot.B || !snapshot.S || (!grassLayer && !woodyLayer)) return null;
 
   const waterCells: Array<{ x: number; y: number }> = [];
   for (let y = 0; y < height; y += 1) {
@@ -596,6 +650,7 @@ const buildGrasslandSignal = (snapshot: EcoSnapshot | null) => {
 
   let plantableCells = 0;
   let grassCells = 0;
+  let woodyCells = 0;
   const riparian: number[] = [];
   const far: number[] = [];
 
@@ -604,7 +659,19 @@ const buildGrasslandSignal = (snapshot: EcoSnapshot | null) => {
       if (!isPlantableLand(snapshot, x, y, width)) continue;
       plantableCells += 1;
       const index = y * width + x;
-      if (isActivePlantValue(readCell(grassLayer, x, y, width))) grassCells += 1;
+      const plantType = readCell(plantTypeLayer, x, y, width);
+      const woodyValue = readCell(woodyLayer, x, y, width);
+      const hasWoody = isWoodyPlantValue(plantType) || isActivePlantValue(woodyValue);
+      if (hasWoody) woodyCells += 1;
+      if (
+        isGrassPlantValue(plantType) ||
+        (plantTypeLayer && isActivePlantValue(plantType) && !hasWoody) ||
+        (!plantTypeLayer &&
+          isActivePlantValue(readCell(grassLayer, x, y, width)) &&
+          !hasWoody)
+      ) {
+        grassCells += 1;
+      }
       if (!waterCells.length) continue;
 
       const distance = distanceToNearestWater(x, y, waterCells);
@@ -616,7 +683,9 @@ const buildGrasslandSignal = (snapshot: EcoSnapshot | null) => {
   return {
     plantableCells,
     grassCells,
+    woodyCells,
     grassCoverage: plantableCells ? grassCells / plantableCells : null,
+    woodyCoverage: plantableCells ? woodyCells / plantableCells : null,
     riparian: regionAverage(riparian, width, moistureLayer, nutrientLayer, biomassLayer),
     far: regionAverage(far, width, moistureLayer, nutrientLayer, biomassLayer),
   };
@@ -685,9 +754,26 @@ const buildMetricsHistory = (
     ]),
     herbBiomass: historyValue(item, [
       'herbBiomass',
+      'grassBiomass',
       'plantBiomass',
       'totalBiomass',
       'biomass',
+    ]),
+    woodyCells: historyValue(item, [
+      'woodyCells',
+      'woodCells',
+      'treeCells',
+      'shrubCells',
+      'woodyPlants',
+      'trees',
+      'shrubs',
+    ]),
+    woodyBiomass: historyValue(item, [
+      'woodyBiomass',
+      'totalWoodyBiomass',
+      'woodBiomass',
+      'treeBiomass',
+      'shrubBiomass',
     ]),
     grassCoverage:
       historyValue(item, [
@@ -700,6 +786,13 @@ const buildMetricsHistory = (
       metricRatio(
         item,
         ['herbCells', 'plantCells', 'vegetatedCells', 'plants', 'herbs'],
+        ['plantableCells', 'landCells', 'habitatCells'],
+      ),
+    woodyCoverage:
+      historyValue(item, ['woodyCoverage', 'woodCoverage', 'woodyCover']) ??
+      metricRatio(
+        item,
+        ['woodyCells', 'woodCells', 'treeCells', 'shrubCells', 'woodyPlants'],
         ['plantableCells', 'landCells', 'habitatCells'],
       ),
   }));
@@ -715,6 +808,14 @@ const buildMetricsHistory = (
     layerActiveCellCount(snapshot?.plantType, width, height) ??
     layerActiveCellCount(snapshot?.plantBiomass, width, height);
   const herbBiomass = layerSum(snapshot?.plantBiomass, width, height);
+  const woodyCells =
+    layerActiveCellCount(snapshot?.woodyBiomass, width, height) ??
+    layerActiveCellCount(
+      snapshot ? pickLayer(snapshot, woodyPlantKeys) : undefined,
+      width,
+      height,
+    );
+  const woodyBiomass = layerSum(snapshot?.woodyBiomass, width, height);
   const grassland = buildGrasslandSignal(snapshot);
   return [
     {
@@ -726,7 +827,10 @@ const buildMetricsHistory = (
       lakeCells: null,
       herbCells,
       herbBiomass,
+      woodyCells: woodyCells ?? grassland?.woodyCells ?? null,
+      woodyBiomass,
       grassCoverage: grassland?.grassCoverage ?? null,
+      woodyCoverage: grassland?.woodyCoverage ?? null,
     },
   ];
 };
@@ -777,10 +881,30 @@ const buildMetrics = (
   const herbBiomass =
     metricValue(sourceMetrics, [
       'herbBiomass',
+      'grassBiomass',
       'plantBiomass',
       'totalBiomass',
       'biomass',
     ]) ?? layerSum(snapshot?.plantBiomass, width, height);
+  const woodyCells =
+    metricValue(sourceMetrics, [
+      'woodyCells',
+      'woodCells',
+      'treeCells',
+      'shrubCells',
+      'woodyPlants',
+      'trees',
+      'shrubs',
+    ]) ??
+    layerActiveCellCount(snapshot?.woodyBiomass, width, height);
+  const woodyBiomass =
+    metricValue(sourceMetrics, [
+      'woodyBiomass',
+      'totalWoodyBiomass',
+      'woodBiomass',
+      'treeBiomass',
+      'shrubBiomass',
+    ]) ?? layerSum(snapshot?.woodyBiomass, width, height);
   const grassland = buildGrasslandSignal(snapshot);
   const grassCoverage =
     metricValue(sourceMetrics, [
@@ -798,6 +922,17 @@ const buildMetrics = (
         )
       : null) ??
     grassland?.grassCoverage ??
+    null;
+  const woodyCoverage =
+    metricValue(sourceMetrics, ['woodyCoverage', 'woodCoverage', 'woodyCover']) ??
+    (sourceMetrics
+      ? metricRatio(
+          sourceMetrics,
+          ['woodyCells', 'woodCells', 'treeCells', 'shrubCells', 'woodyPlants'],
+          ['plantableCells', 'landCells', 'habitatCells'],
+        )
+      : null) ??
+    grassland?.woodyCoverage ??
     null;
   const riparianMoisture =
     metricValue(sourceMetrics, [
@@ -854,6 +989,15 @@ const buildMetrics = (
     {
       label: 'Total Grass Biomass',
       value: herbBiomass === null ? '-' : herbBiomass.toFixed(1),
+    },
+    { label: 'Woody Coverage', value: formatPercent(woodyCoverage) },
+    {
+      label: 'Woody Cells',
+      value: formatValue((woodyCells ?? grassland?.woodyCells) ?? '-'),
+    },
+    {
+      label: 'Total Woody Biomass',
+      value: woodyBiomass === null ? '-' : woodyBiomass.toFixed(1),
     },
     { label: 'Riparian Biomass', value: formatMetricNumber(riparianBiomass) },
     { label: 'Far Biomass', value: formatMetricNumber(farBiomass) },
@@ -942,7 +1086,7 @@ const buildInspectorValues = (
       ),
     },
     {
-      label: 'Grass',
+      label: 'Plant',
       value: formatValue(
         firstPresent(workerCell, plantTypeKeys) ??
           readCell(pickLayer(snapshot, plantTypeKeys), x, y, width),
@@ -953,6 +1097,20 @@ const buildInspectorValues = (
       value: formatValue(
         firstPresent(workerCell, plantBiomassKeys) ??
           readCell(pickLayer(snapshot, plantBiomassKeys), x, y, width),
+      ),
+    },
+    {
+      label: 'Woody',
+      value: formatValue(
+        firstPresent(workerCell, woodyPlantKeys) ??
+          readCell(pickLayer(snapshot, woodyPlantKeys), x, y, width),
+      ),
+    },
+    {
+      label: 'Woody Biomass',
+      value: formatValue(
+        firstPresent(workerCell, woodyBiomassKeys) ??
+          readCell(pickLayer(snapshot, woodyBiomassKeys), x, y, width),
       ),
     },
     {

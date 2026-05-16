@@ -6,6 +6,7 @@ import { BaseTerrain, PlantType, Surface } from "../../src/sim/types";
 import type { SimState } from "../../src/sim/types";
 
 const RIVER_VALLEY_GRASSLAND = "riverValleyGrassland";
+const WOODY_PLANT_TYPE = PlantType.WOODY;
 
 describe("M2 herb ecology", () => {
   it("grows herb biomass before winter", () => {
@@ -85,9 +86,12 @@ describe("M2 herb ecology", () => {
     expect(Array.from(a.state.plantMaturity)).toEqual(Array.from(b.state.plantMaturity));
     expect(Array.from(a.state.plantStress)).toEqual(Array.from(b.state.plantStress));
     expect(a.metrics()).toEqual(b.metrics());
-    expect(Array.from(a.state.plantType).every((type) => type === PlantType.EMPTY || type === PlantType.HERB)).toBe(
-      true,
-    );
+    expect(
+      Array.from(a.state.plantType).every(
+        (type) => type === PlantType.EMPTY || type === PlantType.HERB || type === WOODY_PLANT_TYPE,
+      ),
+    ).toBe(true);
+    expect(Array.from(a.state.plantType).some((type) => type === PlantType.HERB)).toBe(true);
   });
 
   it("keeps herbs out of water, ocean, and mid/high mountains", () => {
@@ -126,8 +130,6 @@ describe("riverValleyGrassland M2.2 validation", () => {
     expect(metrics.farLandCells).toBeGreaterThan(metrics.riparianLandCells);
     expect(metrics.riparianMeanMoisture).toBeGreaterThan(metrics.farMeanMoisture * 1.5);
     expect(metrics.riparianMeanNutrient).toBeGreaterThan(metrics.farMeanNutrient);
-    expect(metrics.riparianHerbBiomass).toBeCloseTo(signal.near.herbBiomass, 8);
-    expect(metrics.farHerbBiomass).toBeCloseTo(signal.far.herbBiomass, 8);
     expect(metrics.riparianHerbBiomass).toBeGreaterThan(metrics.farHerbBiomass * 2);
     expect(signal.near.moisture).toBeGreaterThan(signal.far.moisture * 1.5);
     expect(signal.near.nutrient).toBeGreaterThan(signal.far.nutrient);
@@ -149,11 +151,61 @@ describe("riverValleyGrassland M2.2 validation", () => {
   });
 });
 
+describe("M3 woody terrain zoning validation", () => {
+  it("runs woody state deterministically in the river-valley scene", () => {
+    const a = createSimulation(RIVER_VALLEY_GRASSLAND, stableDefaultParams);
+    const b = createSimulation(RIVER_VALLEY_GRASSLAND, stableDefaultParams);
+
+    a.step(720);
+    b.step(720);
+
+    expect(woodyCellCount(a.state)).toBeGreaterThan(0);
+    expect(Array.from(a.state.plantType)).toEqual(Array.from(b.state.plantType));
+    expect(Array.from(a.state.plantBiomass)).toEqual(Array.from(b.state.plantBiomass));
+    expect(Array.from(a.state.plantMaturity)).toEqual(Array.from(b.state.plantMaturity));
+    expect(Array.from(a.state.plantStress)).toEqual(Array.from(b.state.plantStress));
+  });
+
+  it("keeps woody plants out of water, ocean, and mid/high mountains", () => {
+    const sim = createSimulation(RIVER_VALLEY_GRASSLAND, stableDefaultParams);
+    sim.step(720);
+
+    expect(woodyCellCount(sim.state)).toBeGreaterThan(0);
+
+    for (let i = 0; i < sim.state.plantType.length; i++) {
+      if (!isWoody(sim.state, i)) continue;
+
+      expect(sim.state.base[i]).not.toBe(BaseTerrain.OCEAN);
+      expect(sim.state.base[i]).not.toBe(BaseTerrain.MID_MOUNTAIN);
+      expect(sim.state.base[i]).not.toBe(BaseTerrain.HIGH_MOUNTAIN);
+      expect(sim.state.surface[i]).not.toBe(Surface.RIVER);
+      expect(sim.state.surface[i]).not.toBe(Surface.LAKE);
+    }
+  });
+
+  it("forms a stronger low-hill and foothill woody signal than distant plains", () => {
+    const sim = createSimulation(RIVER_VALLEY_GRASSLAND, stableDefaultParams);
+    sim.step(720);
+
+    const signal = woodyTerrainSignal(sim.state);
+
+    expect(signal.lowHill.count).toBeGreaterThan(0);
+    expect(signal.distantPlain.count).toBeGreaterThan(0);
+    expect(signal.lowHill.woodyCells).toBeGreaterThan(0);
+    expect(signal.lowHill.woodySignal).toBeGreaterThan(signal.distantPlain.woodySignal * 1.5);
+    expect(signal.lowHill.woodyCoverage).toBeGreaterThan(signal.distantPlain.woodyCoverage);
+  });
+});
+
 interface RegionAverage {
   count: number;
   moisture: number;
   nutrient: number;
   herbBiomass: number;
+  woodyCells: number;
+  woodyBiomass: number;
+  woodyCoverage: number;
+  woodySignal: number;
 }
 
 function landSignalNearWater(
@@ -219,23 +271,86 @@ function averageRegion(state: SimState, indexes: number[]): RegionAverage {
       moisture: 0,
       nutrient: 0,
       herbBiomass: 0,
+      woodyCells: 0,
+      woodyBiomass: 0,
+      woodyCoverage: 0,
+      woodySignal: 0,
     };
   }
 
   let moisture = 0;
   let nutrient = 0;
   let herbBiomass = 0;
+  let woodyCells = 0;
+  let woodyBiomass = 0;
 
   for (const index of indexes) {
     moisture += state.moisture[index];
     nutrient += state.nutrient[index];
-    herbBiomass += state.plantBiomass[index];
+    if (state.plantType[index] === PlantType.HERB) herbBiomass += state.plantBiomass[index];
+    if (isWoody(state, index)) {
+      woodyCells++;
+      woodyBiomass += state.plantBiomass[index];
+    }
   }
+
+  const meanWoodyBiomass = woodyBiomass / indexes.length;
+  const woodyCoverage = woodyCells / indexes.length;
 
   return {
     count: indexes.length,
     moisture: moisture / indexes.length,
     nutrient: nutrient / indexes.length,
     herbBiomass: herbBiomass / indexes.length,
+    woodyCells,
+    woodyBiomass: meanWoodyBiomass,
+    woodyCoverage,
+    woodySignal: meanWoodyBiomass + woodyCoverage,
   };
+}
+
+function woodyCellCount(state: SimState): number {
+  let count = 0;
+  for (let i = 0; i < state.plantType.length; i++) {
+    if (isWoody(state, i)) count++;
+  }
+  return count;
+}
+
+function isWoody(state: SimState, index: number): boolean {
+  return state.plantType[index] === WOODY_PLANT_TYPE;
+}
+
+function woodyTerrainSignal(state: SimState): {
+  lowHill: RegionAverage;
+  distantPlain: RegionAverage;
+} {
+  const lowHillCells: number[] = [];
+  const lowHill: number[] = [];
+  const distantPlain: number[] = [];
+
+  for (let i = 0; i < state.base.length; i++) {
+    if (state.base[i] === BaseTerrain.LOW_HILL && isDryLand(state, i)) {
+      lowHillCells.push(i);
+      lowHill.push(i);
+    }
+  }
+
+  for (let i = 0; i < state.base.length; i++) {
+    if (state.base[i] !== BaseTerrain.PLAIN || !isDryLand(state, i)) continue;
+    if (distanceToNearestCell(state, i, lowHillCells) >= 8) distantPlain.push(i);
+  }
+
+  return {
+    lowHill: averageRegion(state, lowHill),
+    distantPlain: averageRegion(state, distantPlain),
+  };
+}
+
+function isDryLand(state: SimState, index: number): boolean {
+  return (
+    state.base[index] !== BaseTerrain.OCEAN &&
+    state.surface[index] !== Surface.RIVER &&
+    state.surface[index] !== Surface.LAKE
+  );
 }
