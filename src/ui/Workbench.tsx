@@ -24,6 +24,7 @@ type WorkbenchLayerState = LayerState & {
   nutrient: boolean;
   plants: boolean;
   animals: boolean;
+  animalIntents: boolean;
   flowArrows: boolean;
   components: boolean;
 };
@@ -77,6 +78,7 @@ const initialLayers: LayerState = {
   nutrient: false,
   plants: true,
   animals: true,
+  animalIntents: true,
   flowArrows: true,
   components: false,
 } as LayerState;
@@ -433,6 +435,18 @@ const animalEnergyKeys = ['animalEnergy', 'animal_energy'];
 const animalThirstKeys = ['animalThirst', 'animal_thirst'];
 const animalGrazingKeys = ['animalGrazing', 'animal_grazing', 'grazing'];
 const animalDeathsKeys = ['animalDeaths', 'animal_deaths', 'deaths'];
+const animalIntentTypeKeys = [
+  'animalIntentType',
+  'animal_intent_type',
+  'animalIntent',
+  'animal_intent',
+];
+const animalIntentDirectionKeys = [
+  'animalIntentDirection',
+  'animal_intent_direction',
+];
+const animalMoveSuccessKeys = ['animalMoveSuccess', 'animal_move_success'];
+const animalMoveBlockedKeys = ['animalMoveBlocked', 'animal_move_blocked'];
 
 const adaptSnapshot = (snapshot: EcoSnapshot | null): EcoSnapshot | null => {
   if (!snapshot) return null;
@@ -461,6 +475,15 @@ const adaptSnapshot = (snapshot: EcoSnapshot | null): EcoSnapshot | null => {
     animalGrazing:
       snapshot.animalGrazing ?? pickLayer(snapshot, animalGrazingKeys),
     animalDeaths: snapshot.animalDeaths ?? pickLayer(snapshot, animalDeathsKeys),
+    animalIntentType:
+      snapshot.animalIntentType ?? pickLayer(snapshot, animalIntentTypeKeys),
+    animalIntentDirection:
+      snapshot.animalIntentDirection ??
+      pickLayer(snapshot, animalIntentDirectionKeys),
+    animalMoveSuccess:
+      snapshot.animalMoveSuccess ?? pickLayer(snapshot, animalMoveSuccessKeys),
+    animalMoveBlocked:
+      snapshot.animalMoveBlocked ?? pickLayer(snapshot, animalMoveBlockedKeys),
     hydrologySource:
       snapshot.hydrologySource ?? pickLayer(snapshot, ['hydrologySource']),
     hydrologyInflow:
@@ -977,6 +1000,19 @@ const buildMetrics = (
     'grazedBiomass',
   ]);
   const animalDeaths = metricValue(sourceMetrics, ['animalDeaths', 'deadAnimals']);
+  const seekingWaterAnimals = metricValue(sourceMetrics, ['seekingWaterAnimals']);
+  const seekingFoodAnimals = metricValue(sourceMetrics, ['seekingFoodAnimals']);
+  const seekingShelterAnimals = metricValue(sourceMetrics, ['seekingShelterAnimals']);
+  const drinkingAnimals = metricValue(sourceMetrics, ['drinkingAnimals']);
+  const grazingAnimals = metricValue(sourceMetrics, ['grazingAnimals']);
+  const animalMoveSuccesses = metricValue(sourceMetrics, [
+    'animalMoveSuccesses',
+    'animalMoves',
+  ]);
+  const animalMoveBlocked = metricValue(sourceMetrics, [
+    'animalMoveBlocked',
+    'blockedAnimalMoves',
+  ]);
   const riparianAnimalCount = metricValue(sourceMetrics, [
     'riparianAnimalCount',
     'nearWaterAnimals',
@@ -1108,6 +1144,13 @@ const buildMetrics = (
     { label: 'Mean Animal Thirst', value: formatMetricNumber(meanAnimalThirst, 2) },
     { label: 'Grazed Biomass', value: formatMetricNumber(totalGrazedBiomass, 3) },
     { label: 'Animal Deaths', value: formatValue(animalDeaths ?? '-') },
+    { label: 'Seeking Water', value: formatValue(seekingWaterAnimals ?? '-') },
+    { label: 'Seeking Food', value: formatValue(seekingFoodAnimals ?? '-') },
+    { label: 'Seeking Shelter', value: formatValue(seekingShelterAnimals ?? '-') },
+    { label: 'Drinking', value: formatValue(drinkingAnimals ?? '-') },
+    { label: 'Grazing', value: formatValue(grazingAnimals ?? '-') },
+    { label: 'Animal Moves', value: formatValue(animalMoveSuccesses ?? '-') },
+    { label: 'Blocked Moves', value: formatValue(animalMoveBlocked ?? '-') },
     { label: 'Riparian Animals', value: formatValue(riparianAnimalCount ?? '-') },
     { label: 'Sheltered Animals', value: formatValue(shelteredAnimalCount ?? '-') },
     { label: 'Riparian Biomass', value: formatMetricNumber(riparianBiomass) },
@@ -1277,6 +1320,34 @@ const buildInspectorValues = (
       ),
     },
     {
+      label: 'Animal Intent',
+      value: formatAnimalIntent(
+        firstPresent(workerCell, animalIntentTypeKeys) ??
+          readCell(pickLayer(snapshot, animalIntentTypeKeys), x, y, width),
+      ),
+    },
+    {
+      label: 'Intent Dir',
+      value: formatValue(
+        firstPresent(workerCell, animalIntentDirectionKeys) ??
+          readCell(pickLayer(snapshot, animalIntentDirectionKeys), x, y, width),
+      ),
+    },
+    {
+      label: 'Moves',
+      value: formatValue(
+        firstPresent(workerCell, animalMoveSuccessKeys) ??
+          readCell(pickLayer(snapshot, animalMoveSuccessKeys), x, y, width),
+      ),
+    },
+    {
+      label: 'Blocked',
+      value: formatValue(
+        firstPresent(workerCell, animalMoveBlockedKeys) ??
+          readCell(pickLayer(snapshot, animalMoveBlockedKeys), x, y, width),
+      ),
+    },
+    {
       label: 'F',
       value: formatValue(
         workerCell?.flow ?? workerCell?.F ?? readCell(snapshot.F, x, y, width),
@@ -1332,6 +1403,20 @@ const buildInspectorValues = (
       ),
     },
   ];
+};
+
+const formatAnimalIntent = (value: unknown) => {
+  const numeric = Number(value);
+  if (!Number.isFinite(numeric) || numeric <= 0) return '-';
+  const labels: Record<number, string> = {
+    1: 'Seek Water',
+    2: 'Seek Food',
+    3: 'Seek Shelter',
+    4: 'Wander',
+    5: 'Drink',
+    6: 'Graze',
+  };
+  return labels[Math.trunc(numeric)] ?? formatValue(value);
 };
 
 const getRecord = (value: unknown): Record<string, unknown> | null =>

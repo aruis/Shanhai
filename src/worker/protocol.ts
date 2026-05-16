@@ -44,6 +44,14 @@ export type SimMetrics = {
   meanAnimalEnergy?: number;
   meanAnimalThirst?: number;
   totalGrazedBiomass?: number;
+  seekingWaterAnimals?: number;
+  seekingFoodAnimals?: number;
+  seekingShelterAnimals?: number;
+  wanderingAnimals?: number;
+  drinkingAnimals?: number;
+  grazingAnimals?: number;
+  animalMoveSuccesses?: number;
+  animalMoveBlocked?: number;
   [key: string]: unknown;
 };
 
@@ -58,6 +66,10 @@ export type SimSnapshot = {
   animalThirst?: unknown;
   animalGrazing?: unknown;
   animalDeaths?: unknown;
+  animalIntentType?: unknown;
+  animalIntentDirection?: unknown;
+  animalMoveSuccess?: unknown;
+  animalMoveBlocked?: unknown;
   cells?: unknown;
   [key: string]: unknown;
 };

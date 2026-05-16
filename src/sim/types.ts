@@ -21,6 +21,16 @@ export enum PlantType {
   WOODY = 2,
 }
 
+export enum AnimalIntentType {
+  NONE = 0,
+  SEEK_WATER = 1,
+  SEEK_FOOD = 2,
+  SEEK_SHELTER = 3,
+  WANDER = 4,
+  DRINK = 5,
+  GRAZE = 6,
+}
+
 export type Season = "spring" | "summer" | "autumn" | "winter";
 
 export interface Spring {
@@ -59,6 +69,10 @@ export interface SimState {
   animalThirst: Float64Array;
   animalGrazing: Float64Array;
   animalDeaths: Uint16Array;
+  animalIntentType: Uint8Array;
+  animalIntentDirection: Int8Array;
+  animalMoveSuccess: Uint16Array;
+  animalMoveBlocked: Uint16Array;
   flow: Float64Array;
   hydrologySource: Float64Array;
   hydrologyInflow: Float64Array;
@@ -189,6 +203,14 @@ export interface Metrics {
   totalGrazedBiomass: number;
   thirstyAnimals: number;
   hungryAnimals: number;
+  seekingWaterAnimals: number;
+  seekingFoodAnimals: number;
+  seekingShelterAnimals: number;
+  wanderingAnimals: number;
+  drinkingAnimals: number;
+  grazingAnimals: number;
+  animalMoveSuccesses: number;
+  animalMoveBlocked: number;
   riparianAnimalCount: number;
   shelteredAnimalCount: number;
   herbToWoodyRatio: number;

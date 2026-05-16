@@ -1,10 +1,10 @@
 import { neighbors } from "./indexing";
 import { seasonForTick } from "./hydrology";
-import { Animal, BaseTerrain, Params, PlantType, SimState, Surface } from "./types";
+import { Animal, AnimalIntentType, BaseTerrain, Params, PlantType, SimState, Surface } from "./types";
 
 type Intent =
-  | { kind: "stay"; animal: Animal }
-  | { kind: "move"; animal: Animal; target: number };
+  | { kind: "stay"; animal: Animal; reason: AnimalIntentType }
+  | { kind: "move"; animal: Animal; target: number; reason: AnimalIntentType };
 
 export function stepAnimals(state: SimState, params: Params): SimState {
   if (state.animals.length === 0) {
@@ -16,6 +16,10 @@ export function stepAnimals(state: SimState, params: Params): SimState {
   const deathReturns = new Float64Array(state.nutrient.length);
   const deaths = new Uint16Array(state.nutrient.length);
   const grazing = new Float64Array(state.nutrient.length);
+  const intentType = new Uint8Array(state.nutrient.length);
+  const intentDirection = new Int8Array(state.nutrient.length).fill(-1);
+  const moveSuccess = new Uint16Array(state.nutrient.length);
+  const moveBlocked = new Uint16Array(state.nutrient.length);
   const intents: Intent[] = [];
 
   for (const animal of state.animals) {
@@ -41,13 +45,15 @@ export function stepAnimals(state: SimState, params: Params): SimState {
       continue;
     }
 
-    intents.push(buildIntent(state, params, animal, season));
+    const intent = buildIntent(state, params, animal, season);
+    recordIntent(state, intent, intentType, intentDirection);
+    intents.push(intent);
   }
 
-  arbitrateMovement(state, params, intents);
+  arbitrateMovement(state, params, intents, moveSuccess, moveBlocked);
   settleDrinkAndGraze(state, params, deathReturns, deaths, grazing);
   commitDeathReturns(state, params, deathReturns);
-  rebuildAnimalLayers(state, deaths, grazing);
+  rebuildAnimalLayers(state, deaths, grazing, intentType, intentDirection, moveSuccess, moveBlocked);
   state.animals = state.animals.filter((animal) => animal.alive);
   return state;
 }
@@ -59,36 +65,37 @@ function buildIntent(
   season: ReturnType<typeof seasonForTick>,
 ): Intent {
   if (animal.thirst < params.animalThirstCritical) {
-    if (hasAdjacentWater(state, animal.index)) return { kind: "stay", animal };
-    return bestMoveIntent(state, params, animal, waterSeekingScore);
+    if (hasAdjacentWater(state, animal.index)) return { kind: "stay", animal, reason: AnimalIntentType.DRINK };
+    return bestMoveIntent(state, params, animal, AnimalIntentType.SEEK_WATER, waterSeekingScore);
   }
 
   if (animal.energy < params.animalHungerThreshold) {
     if (state.plantType[animal.index] === PlantType.HERB && state.plantBiomass[animal.index] > 0.03) {
-      return { kind: "stay", animal };
+      return { kind: "stay", animal, reason: AnimalIntentType.GRAZE };
     }
-    return bestMoveIntent(state, params, animal, foodSeekingScore);
+    return bestMoveIntent(state, params, animal, AnimalIntentType.SEEK_FOOD, foodSeekingScore);
   }
 
   if (season === "winter") {
     const shelter = bestNeighbor(state, params, animal, shelterSeekingScore);
     if (shelter.target !== animal.index && shelter.score > 0) {
-      return { kind: "move", animal, target: shelter.target };
+      return { kind: "move", animal, target: shelter.target, reason: AnimalIntentType.SEEK_SHELTER };
     }
   }
 
-  return bestMoveIntent(state, params, animal, wanderScore);
+  return bestMoveIntent(state, params, animal, AnimalIntentType.WANDER, wanderScore);
 }
 
 function bestMoveIntent(
   state: SimState,
   params: Params,
   animal: Animal,
+  reason: AnimalIntentType,
   scoreCell: (state: SimState, params: Params, from: number, target: number) => number,
 ): Intent {
   const candidate = bestNeighbor(state, params, animal, scoreCell);
-  if (candidate.target === animal.index) return { kind: "stay", animal };
-  return { kind: "move", animal, target: candidate.target };
+  if (candidate.target === animal.index) return { kind: "stay", animal, reason };
+  return { kind: "move", animal, target: candidate.target, reason };
 }
 
 function bestNeighbor(
@@ -142,7 +149,13 @@ function wanderScore(state: SimState, params: Params, from: number, target: numb
   );
 }
 
-function arbitrateMovement(state: SimState, params: Params, intents: Intent[]): void {
+function arbitrateMovement(
+  state: SimState,
+  params: Params,
+  intents: Intent[],
+  moveSuccess: Uint16Array,
+  moveBlocked: Uint16Array,
+): void {
   const current = new Uint16Array(state.animalCount.length);
   const outgoing = new Uint16Array(state.animalCount.length);
   const accepted = new Uint16Array(state.animalCount.length);
@@ -160,16 +173,26 @@ function arbitrateMovement(state: SimState, params: Params, intents: Intent[]): 
 
   for (const intent of moveIntents) {
     const animal = intent.animal;
-    if (!animal.alive || !isAnimalHabitat(state, intent.target)) continue;
+    if (!animal.alive || !isAnimalHabitat(state, intent.target)) {
+      moveBlocked[animal.index]++;
+      continue;
+    }
 
     const stayingAtTarget = Math.max(0, current[intent.target] - outgoing[intent.target]);
-    if (stayingAtTarget + accepted[intent.target] >= params.animalCellCapacity) continue;
+    if (stayingAtTarget + accepted[intent.target] >= params.animalCellCapacity) {
+      moveBlocked[animal.index]++;
+      continue;
+    }
 
     const moveCost =
       params.animalMoveCost *
       (state.heightMap[intent.target] > state.heightMap[animal.index] ? params.animalUphillPenalty : 1);
     animal.energy = clamp(animal.energy - moveCost, 0, params.animalEnergyMax);
-    if (animal.energy <= 0) continue;
+    if (animal.energy <= 0) {
+      moveBlocked[animal.index]++;
+      continue;
+    }
+    moveSuccess[animal.index]++;
     animal.index = intent.target;
     accepted[intent.target]++;
   }
@@ -257,12 +280,20 @@ function rebuildAnimalLayers(
   state: SimState,
   deaths: Uint16Array = new Uint16Array(state.animalCount.length),
   grazing: Float64Array = new Float64Array(state.animalCount.length),
+  intentType: Uint8Array = new Uint8Array(state.animalCount.length),
+  intentDirection: Int8Array = new Int8Array(state.animalCount.length).fill(-1),
+  moveSuccess: Uint16Array = new Uint16Array(state.animalCount.length),
+  moveBlocked: Uint16Array = new Uint16Array(state.animalCount.length),
 ): void {
   state.animalCount.fill(0);
   state.animalEnergy.fill(0);
   state.animalThirst.fill(0);
   state.animalGrazing = grazing;
   state.animalDeaths = deaths;
+  state.animalIntentType = intentType;
+  state.animalIntentDirection = intentDirection;
+  state.animalMoveSuccess = moveSuccess;
+  state.animalMoveBlocked = moveBlocked;
 
   for (const animal of state.animals) {
     if (!animal.alive) continue;
@@ -277,6 +308,37 @@ function rebuildAnimalLayers(
     state.animalEnergy[i] /= count;
     state.animalThirst[i] /= count;
   }
+}
+
+function recordIntent(
+  state: SimState,
+  intent: Intent,
+  intentType: Uint8Array,
+  intentDirection: Int8Array,
+): void {
+  const origin = intent.animal.index;
+  intentType[origin] = Math.max(intentType[origin], intent.reason);
+  if (intent.kind === "move") {
+    intentDirection[origin] = directionBetween(origin, intent.target, state.width);
+  }
+}
+
+function directionBetween(from: number, to: number, width: number): number {
+  const fx = from % width;
+  const fy = Math.floor(from / width);
+  const tx = to % width;
+  const ty = Math.floor(to / width);
+  const dx = Math.sign(tx - fx);
+  const dy = Math.sign(ty - fy);
+  if (dx === 0 && dy < 0) return 0;
+  if (dx > 0 && dy < 0) return 1;
+  if (dx > 0 && dy === 0) return 2;
+  if (dx > 0 && dy > 0) return 3;
+  if (dx === 0 && dy > 0) return 4;
+  if (dx < 0 && dy > 0) return 5;
+  if (dx < 0 && dy === 0) return 6;
+  if (dx < 0 && dy < 0) return 7;
+  return -1;
 }
 
 function isAnimalHabitat(state: SimState, index: number): boolean {

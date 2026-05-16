@@ -3,6 +3,8 @@ import { Application, Graphics } from 'pixi.js';
 import {
   animalAlpha,
   animalColor,
+  animalIntentArrowColor,
+  animalIntentColor,
   componentColor,
   flowAlpha,
   flowArrowColor,
@@ -50,6 +52,10 @@ export interface EcoSnapshot {
   animalThirst?: MatrixLayer;
   animalGrazing?: MatrixLayer;
   animalDeaths?: MatrixLayer;
+  animalIntentType?: MatrixLayer;
+  animalIntentDirection?: MatrixLayer;
+  animalMoveSuccess?: MatrixLayer;
+  animalMoveBlocked?: MatrixLayer;
   flowMemory?: MatrixLayer;
   flowDirection?: MatrixLayer;
   dominantFlowDirection?: MatrixLayer;
@@ -70,6 +76,7 @@ export interface LayerState {
   nutrient: boolean;
   plants: boolean;
   animals: boolean;
+  animalIntents: boolean;
   flowArrows: boolean;
   components: boolean;
 }
@@ -367,6 +374,12 @@ export function PixiViewport({
       'animalDensity',
       'animal_density',
     ]);
+    const animalIntentTypeLayer = pickSnapshotLayer(currentSnapshot, [
+      'animalIntentType',
+      'animal_intent_type',
+      'animalIntent',
+      'animal_intent',
+    ]);
 
     for (let y = 0; y < height; y += 1) {
       for (let x = 0; x < width; x += 1) {
@@ -495,6 +508,14 @@ export function PixiViewport({
               )
               .fill({ color, alpha: animalAlpha(animals) });
           }
+          const intentColor = animalIntentColor(readCell(animalIntentTypeLayer, x, y, width));
+          if (intentColor !== null) {
+            const inset = Math.max(1, Math.floor(cellSize * 0.16));
+            const marker = Math.max(1, Math.floor(cellSize * 0.18));
+            grid
+              .rect(px + inset, py + inset, marker, marker)
+              .fill({ color: intentColor, alpha: 0.86 });
+          }
         }
 
         if (currentLayers.components) {
@@ -526,9 +547,25 @@ export function PixiViewport({
     }
 
     if (currentLayers.flowArrows) {
-      drawFlowArrows(
+      drawDirectionArrows(
         grid,
         currentSnapshot,
+        ['flowDirection', 'flow_direction', 'dominantFlowDirection', 'dominant_flow_direction'],
+        flowArrowColor,
+        width,
+        height,
+        cellSize,
+        offsetX,
+        offsetY,
+      );
+    }
+
+    if (currentLayers.animalIntents) {
+      drawDirectionArrows(
+        grid,
+        currentSnapshot,
+        ['animalIntentDirection', 'animal_intent_direction'],
+        animalIntentArrowColor,
         width,
         height,
         cellSize,
@@ -612,21 +649,18 @@ const drawComponentBoundaries = (
   drawBoundaryForLayer(riverComponents, 0x7cffc8, 0.5);
 };
 
-const drawFlowArrows = (
+const drawDirectionArrows = (
   target: Graphics,
   snapshot: EcoSnapshot | null,
+  layerKeys: string[],
+  color: number,
   width: number,
   height: number,
   cellSize: number,
   offsetX: number,
   offsetY: number,
 ) => {
-  const directionLayer = pickSnapshotLayer(snapshot, [
-    'flowDirection',
-    'flow_direction',
-    'dominantFlowDirection',
-    'dominant_flow_direction',
-  ]);
+  const directionLayer = pickSnapshotLayer(snapshot, layerKeys);
   if (!directionLayer || cellSize < 6) return;
 
   const step = cellSize < 11 ? 2 : 1;
@@ -667,7 +701,7 @@ const drawFlowArrows = (
 
   target.stroke({
     width: Math.max(1, Math.floor(cellSize * 0.11)),
-    color: flowArrowColor,
+    color,
     alpha: 0.78,
   });
 };

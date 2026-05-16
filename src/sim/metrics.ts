@@ -1,4 +1,4 @@
-import { BaseTerrain, Metrics, PlantType, SimState, Surface } from "./types";
+import { AnimalIntentType, BaseTerrain, Metrics, PlantType, SimState, Surface } from "./types";
 import { seasonForTick } from "./hydrology";
 
 export function collectMetrics(state: SimState): Metrics {
@@ -18,6 +18,14 @@ export function collectMetrics(state: SimState): Metrics {
   let animalGrazing = 0;
   let thirstyAnimals = 0;
   let hungryAnimals = 0;
+  let seekingWaterAnimals = 0;
+  let seekingFoodAnimals = 0;
+  let seekingShelterAnimals = 0;
+  let wanderingAnimals = 0;
+  let drinkingAnimals = 0;
+  let grazingAnimals = 0;
+  let animalMoveSuccesses = 0;
+  let animalMoveBlocked = 0;
   let dryCells = 0;
   let wetCells = 0;
   let riverCells = 0;
@@ -47,6 +55,28 @@ export function collectMetrics(state: SimState): Metrics {
     }
     animalDeaths += state.animalDeaths[i] ?? 0;
     animalGrazing += state.animalGrazing[i] ?? 0;
+    animalMoveSuccesses += state.animalMoveSuccess[i] ?? 0;
+    animalMoveBlocked += state.animalMoveBlocked[i] ?? 0;
+    switch (state.animalIntentType[i]) {
+      case AnimalIntentType.SEEK_WATER:
+        seekingWaterAnimals += state.animalCount[i] || 1;
+        break;
+      case AnimalIntentType.SEEK_FOOD:
+        seekingFoodAnimals += state.animalCount[i] || 1;
+        break;
+      case AnimalIntentType.SEEK_SHELTER:
+        seekingShelterAnimals += state.animalCount[i] || 1;
+        break;
+      case AnimalIntentType.WANDER:
+        wanderingAnimals += state.animalCount[i] || 1;
+        break;
+      case AnimalIntentType.DRINK:
+        drinkingAnimals += state.animalCount[i] || 1;
+        break;
+      case AnimalIntentType.GRAZE:
+        grazingAnimals += state.animalCount[i] || 1;
+        break;
+    }
     flowThrough += state.flow[i];
     if (water > maxWater) maxWater = water;
     if (state.base[i] === BaseTerrain.OCEAN) oceanCells++;
@@ -85,6 +115,14 @@ export function collectMetrics(state: SimState): Metrics {
     totalGrazedBiomass: animalGrazing,
     thirstyAnimals,
     hungryAnimals,
+    seekingWaterAnimals,
+    seekingFoodAnimals,
+    seekingShelterAnimals,
+    wanderingAnimals,
+    drinkingAnimals,
+    grazingAnimals,
+    animalMoveSuccesses,
+    animalMoveBlocked,
     riparianAnimalCount: grassland.riparianAnimalCount,
     shelteredAnimalCount: grassland.shelteredAnimalCount,
     herbToWoodyRatio: ratio(herbCells, woodyCells),

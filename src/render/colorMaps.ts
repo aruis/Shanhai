@@ -133,6 +133,18 @@ export const animalAlpha = (value: CellValue): number => {
   return 0.45 + clamp01(count / 4) * 0.35;
 };
 
+export const animalIntentColor = (value: CellValue): number | null => {
+  const intent = Number(value ?? 0);
+  if (!Number.isFinite(intent) || intent <= 0) return null;
+  if (intent === 1) return 0x63c7ff;
+  if (intent === 2) return 0x99dc62;
+  if (intent === 3) return 0xc7a15a;
+  if (intent === 4) return 0xd0d6dd;
+  if (intent === 5) return 0x5fb6d6;
+  if (intent === 6) return 0xb8df72;
+  return 0xf2c75c;
+};
+
 const componentPalette = [
   0x4cc9f0,
   0x80d56f,
@@ -145,6 +157,7 @@ const componentPalette = [
 ];
 
 export const flowArrowColor = 0xbdefff;
+export const animalIntentArrowColor = 0xf2c75c;
 
 export const componentColor = (value: CellValue): number | null => {
   if (value === null || value === undefined || value === false) return null;
