@@ -6,9 +6,6 @@ import { BaseTerrain, PlantType, Surface } from "../../src/sim/types";
 import type { SimState } from "../../src/sim/types";
 
 const RIVER_VALLEY_GRASSLAND = "riverValleyGrassland";
-const describeRiverValleyGrassland = hasScenario(RIVER_VALLEY_GRASSLAND)
-  ? describe
-  : describe.skip;
 
 describe("M2 herb ecology", () => {
   it("grows herb biomass before winter", () => {
@@ -109,7 +106,11 @@ describe("M2 herb ecology", () => {
   });
 });
 
-describeRiverValleyGrassland("riverValleyGrassland M2.2 validation", () => {
+describe("riverValleyGrassland M2.2 validation", () => {
+  it("is registered as a scenario", () => {
+    expect(scenarios).toHaveProperty(RIVER_VALLEY_GRASSLAND);
+  });
+
   it("forms a stronger riparian grassland band than distant plantable land", () => {
     const sim = createSimulation(RIVER_VALLEY_GRASSLAND, stableDefaultParams);
     sim.step(240);
@@ -185,10 +186,6 @@ function landSignalNearWater(
     middle: averageRegion(state, middle),
     far: averageRegion(state, far),
   };
-}
-
-function hasScenario(name: string): boolean {
-  return Object.prototype.hasOwnProperty.call(scenarios, name);
 }
 
 function isPlantableLand(state: SimState, index: number): boolean {

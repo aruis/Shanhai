@@ -7,9 +7,6 @@ import { Surface } from "../../src/sim/types";
 import type { SimState } from "../../src/sim/types";
 
 const RIVER_VALLEY_GRASSLAND = "riverValleyGrassland";
-const describeRiverValleyGrassland = hasScenario(RIVER_VALLEY_GRASSLAND)
-  ? describe
-  : describe.skip;
 
 describe("hydrology MVP", () => {
   it("creates fixed scenarios deterministically for the same seed", () => {
@@ -147,7 +144,11 @@ describe("hydrology MVP", () => {
   });
 });
 
-describeRiverValleyGrassland("riverValleyGrassland hydrology validation", () => {
+describe("riverValleyGrassland hydrology validation", () => {
+  it("is registered as a scenario", () => {
+    expect(scenarios).toHaveProperty(RIVER_VALLEY_GRASSLAND);
+  });
+
   it("creates the fixed river-valley grassland scenario deterministically", () => {
     const factory = getScenarioFactory(RIVER_VALLEY_GRASSLAND);
     const a = factory(404);
@@ -192,8 +193,4 @@ function totalWater(water: Float64Array): number {
 
 function getScenarioFactory(name: string): (seed?: number) => SimState {
   return (scenarios as Record<string, (seed?: number) => SimState>)[name];
-}
-
-function hasScenario(name: string): boolean {
-  return Object.prototype.hasOwnProperty.call(scenarios, name);
 }
