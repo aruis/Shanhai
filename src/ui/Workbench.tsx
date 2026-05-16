@@ -260,6 +260,8 @@ export function Workbench() {
         </div>
       </header>
 
+      {sim.error ? <div style={errorBannerStyle}>{sim.error}</div> : null}
+
       <section style={bodyStyle}>
         <aside style={leftRailStyle}>
           <Controls
@@ -337,6 +339,20 @@ const adaptSnapshot = (snapshot: EcoSnapshot | null): EcoSnapshot | null => {
     S: snapshot.S ?? pickLayer(snapshot, ['surface', 'S']),
     W: snapshot.W ?? pickLayer(snapshot, ['water', 'W']),
     F: snapshot.F ?? pickLayer(snapshot, ['flow', 'F']),
+    hydrologySource:
+      snapshot.hydrologySource ?? pickLayer(snapshot, ['hydrologySource']),
+    hydrologyInflow:
+      snapshot.hydrologyInflow ?? pickLayer(snapshot, ['hydrologyInflow']),
+    hydrologyOutflow:
+      snapshot.hydrologyOutflow ?? pickLayer(snapshot, ['hydrologyOutflow']),
+    hydrologyEvaporation:
+      snapshot.hydrologyEvaporation ??
+      pickLayer(snapshot, ['hydrologyEvaporation']),
+    hydrologySeepage:
+      snapshot.hydrologySeepage ?? pickLayer(snapshot, ['hydrologySeepage']),
+    hydrologyOceanSink:
+      snapshot.hydrologyOceanSink ??
+      pickLayer(snapshot, ['hydrologyOceanSink']),
     flowMemory:
       snapshot.flowMemory ?? pickLayer(snapshot, ['flowMemory', 'flow_memory']),
     standingWaterMemory:
@@ -465,6 +481,10 @@ const buildInspectorValues = (
     workerCell?.componentId ??
     workerCell?.component ??
     workerCell?.componentID ??
+    validComponentValue(workerCell?.lakeComponent) ??
+    validComponentValue(workerCell?.riverComponent) ??
+    readValidComponent(pickLayer(snapshot, ['lakeComponent']), x, y, width) ??
+    readValidComponent(pickLayer(snapshot, ['riverComponent']), x, y, width) ??
     readCell(
       pickLayer(snapshot, ['componentId', 'componentIds', 'components']),
       x,
@@ -514,17 +534,45 @@ const buildInspectorValues = (
       value: formatValue(readCell(snapshot.standingWaterMemory, x, y, width)),
     },
     { label: 'Component', value: formatValue(componentId) },
-    { label: 'Source', value: formatBudgetValue(workerCell, budget, 'source') },
-    { label: 'Inflow', value: formatBudgetValue(workerCell, budget, 'inflow') },
-    { label: 'Outflow', value: formatBudgetValue(workerCell, budget, 'outflow') },
+    {
+      label: 'Source',
+      value: formatBudgetValue(snapshot, workerCell, budget, 'source', x, y, width),
+    },
+    {
+      label: 'Inflow',
+      value: formatBudgetValue(snapshot, workerCell, budget, 'inflow', x, y, width),
+    },
+    {
+      label: 'Outflow',
+      value: formatBudgetValue(snapshot, workerCell, budget, 'outflow', x, y, width),
+    },
     {
       label: 'Evap',
-      value: formatBudgetValue(workerCell, budget, 'evaporation'),
+      value: formatBudgetValue(
+        snapshot,
+        workerCell,
+        budget,
+        'evaporation',
+        x,
+        y,
+        width,
+      ),
     },
-    { label: 'Seepage', value: formatBudgetValue(workerCell, budget, 'seepage') },
+    {
+      label: 'Seepage',
+      value: formatBudgetValue(snapshot, workerCell, budget, 'seepage', x, y, width),
+    },
     {
       label: 'OceanSink',
-      value: formatBudgetValue(workerCell, budget, 'oceanSink'),
+      value: formatBudgetValue(
+        snapshot,
+        workerCell,
+        budget,
+        'oceanSink',
+        x,
+        y,
+        width,
+      ),
     },
   ];
 };
@@ -533,10 +581,38 @@ const getRecord = (value: unknown): Record<string, unknown> | null =>
   value && typeof value === 'object' ? (value as Record<string, unknown>) : null;
 
 const formatBudgetValue = (
+  snapshot: EcoSnapshot,
   cell: Record<string, unknown> | null,
   budget: Record<string, unknown> | null,
   key: string,
-) => formatValue(budget?.[key] ?? cell?.[key]);
+  x: number,
+  y: number,
+  width: number,
+) => {
+  const hydrologyKey = `hydrology${key[0].toUpperCase()}${key.slice(1)}`;
+  return formatValue(
+    budget?.[key] ??
+      cell?.[key] ??
+      cell?.[hydrologyKey] ??
+      readCell(pickLayer(snapshot, [hydrologyKey]), x, y, width),
+  );
+};
+
+const readValidComponent = (
+  layer: MatrixLayer,
+  x: number,
+  y: number,
+  width: number,
+) => {
+  const value = readCell(layer, x, y, width);
+  return validComponentValue(value);
+};
+
+const validComponentValue = (value: unknown) => {
+  const numeric = Number(value);
+  if (Number.isFinite(numeric) && numeric >= 0) return numeric;
+  return undefined;
+};
 
 const resolveInspectorCell = (
   localCell: { x: number; y: number } | null,
@@ -617,6 +693,21 @@ const bodyStyle = {
   gridTemplateColumns: '260px minmax(360px, 1fr) 280px',
   gap: 12,
   padding: 12,
+} satisfies CSSProperties;
+
+const errorBannerStyle = {
+  position: 'absolute',
+  top: 66,
+  right: 18,
+  zIndex: 2,
+  maxWidth: 520,
+  color: '#ffd7d7',
+  border: '1px solid #7f2f3a',
+  borderRadius: 4,
+  background: '#35141a',
+  padding: '9px 12px',
+  fontSize: 12,
+  boxShadow: '0 10px 30px rgba(0, 0, 0, 0.28)',
 } satisfies CSSProperties;
 
 const leftRailStyle = {

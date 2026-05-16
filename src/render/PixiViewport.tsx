@@ -119,14 +119,14 @@ const directionFromValue = (
   if (Number.isFinite(numeric)) {
     const rounded = Math.trunc(numeric);
     const d8 = [
+      { dx: 0, dy: -1 },
+      { dx: 1, dy: -1 },
       { dx: 1, dy: 0 },
       { dx: 1, dy: 1 },
       { dx: 0, dy: 1 },
       { dx: -1, dy: 1 },
       { dx: -1, dy: 0 },
       { dx: -1, dy: -1 },
-      { dx: 0, dy: -1 },
-      { dx: 1, dy: -1 },
     ];
     const direction = d8[((rounded % d8.length) + d8.length) % d8.length];
     return { ...direction, strength: 1 };
@@ -394,7 +394,9 @@ export function PixiViewport({
           const riverComponent = readCell(riverComponents, x, y, width);
           const lakeComponent = readCell(lakeComponents, x, y, width);
           const hasRiverComponent = componentKey(riverComponent) !== null;
-          const color = componentColor(riverComponent ?? lakeComponent);
+          const color = componentColor(
+            hasRiverComponent ? riverComponent : lakeComponent,
+          );
           if (color !== null) {
             grid
               .rect(px, py, cellSize, cellSize)

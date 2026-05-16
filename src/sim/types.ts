@@ -97,6 +97,7 @@ export interface Params {
 
 export interface Metrics {
   tick: number;
+  season: Season;
   totalWater: number;
   totalMoisture: number;
   oceanSink: number;

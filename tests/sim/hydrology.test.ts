@@ -30,6 +30,26 @@ describe("hydrology MVP", () => {
     }
   });
 
+  it("preserves global water balance across hydrology sinks and sources", () => {
+    const sim = createSimulation("basinLake", stableDefaultParams);
+    let previousWater = totalWater(sim.state.water);
+
+    for (let i = 0; i < 40; i++) {
+      sim.step();
+      const currentWater = totalWater(sim.state.water);
+      const stats = sim.state.lastStats;
+      const expectedWater =
+        previousWater +
+        stats.source -
+        stats.oceanSink -
+        stats.evaporation -
+        stats.seepage;
+
+      expect(currentWater).toBeCloseTo(expectedWater, 8);
+      previousWater = currentWater;
+    }
+  });
+
   it("routes slope water into the ocean sink", () => {
     const sim = createSimulation("slopeToOcean", stableDefaultParams);
     let totalOceanSink = 0;
@@ -108,4 +128,21 @@ describe("hydrology MVP", () => {
 
     expect(sim.metrics().largestLakeSize).toBeGreaterThan(0);
   });
+
+  it("forms a downstream flow path in the basinSpill scenario", () => {
+    const sim = createSimulation("basinSpill", stableDefaultParams);
+    sim.step(220);
+    const metrics = sim.metrics();
+
+    expect(metrics.lakeCells).toBeGreaterThan(0);
+    expect(metrics.riverCells).toBeGreaterThan(50);
+    expect(metrics.flowThrough).toBeGreaterThan(0);
+    expect(metrics.largestRiverSize).toBeGreaterThan(50);
+  });
 });
+
+function totalWater(water: Float64Array): number {
+  let total = 0;
+  for (const amount of water) total += amount;
+  return total;
+}

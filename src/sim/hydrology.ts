@@ -5,7 +5,7 @@ import { BaseTerrain, HydrologyStats, Params, Season, SimState, Surface } from "
 const EPSILON = 1e-9;
 const SEASON_LENGTH = 90;
 
-function seasonForTick(tick: number): Season {
+export function seasonForTick(tick: number): Season {
   const phase = Math.floor(tick / SEASON_LENGTH) % 4;
   if (phase === 0) return "spring";
   if (phase === 1) return "summer";

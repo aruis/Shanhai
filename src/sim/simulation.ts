@@ -1,4 +1,4 @@
-import { stepHydrology } from "./hydrology";
+import { seasonForTick, stepHydrology } from "./hydrology";
 import { stableDefaultParams } from "./params";
 import { scenarios, ScenarioName } from "./scenarios";
 import { Metrics, Params, SimState } from "./types";
@@ -14,6 +14,7 @@ type ScenarioInput =
 
 export interface SimSnapshot {
   tick: number;
+  season: string;
   width: number;
   height: number;
   seed: number;
@@ -85,6 +86,7 @@ export function createSimulation(
     getSnapshot() {
       return {
         tick: state.tick,
+        season: seasonForTick(state.tick),
         width: state.width,
         height: state.height,
         seed: state.seed,

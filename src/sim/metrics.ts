@@ -1,4 +1,5 @@
 import { BaseTerrain, Metrics, SimState, Surface } from "./types";
+import { seasonForTick } from "./hydrology";
 
 export function collectMetrics(state: SimState): Metrics {
   const components = updateHydrologyComponents(state);
@@ -38,6 +39,7 @@ export function collectMetrics(state: SimState): Metrics {
 
   return {
     tick: state.tick,
+    season: seasonForTick(state.tick),
     totalWater,
     totalMoisture,
     oceanSink: state.lastStats.oceanSink,
