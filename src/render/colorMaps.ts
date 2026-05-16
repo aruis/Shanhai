@@ -1,4 +1,4 @@
-export type CellValue = number | string | boolean | null | undefined;
+export type CellValue = unknown;
 
 const clamp01 = (value: number) => Math.max(0, Math.min(1, value));
 
@@ -51,4 +51,36 @@ export const waterAlpha = (value: CellValue): number => {
 export const flowAlpha = (value: CellValue): number => {
   const amount = Number(value ?? 0);
   return 0.16 + clamp01(amount / 6) * 0.48;
+};
+
+const componentPalette = [
+  0x4cc9f0,
+  0x80d56f,
+  0xf7c948,
+  0xf08a5d,
+  0xb983ff,
+  0x5ee6a8,
+  0xff7aa2,
+  0x75a7ff,
+];
+
+export const flowArrowColor = 0xbdefff;
+
+export const componentColor = (value: CellValue): number | null => {
+  if (value === null || value === undefined || value === false) return null;
+
+  const numeric = Number(value);
+  if (Number.isFinite(numeric)) {
+    if (numeric < 0) return null;
+    return componentPalette[Math.abs(Math.trunc(numeric)) % componentPalette.length];
+  }
+
+  const key = String(value);
+  if (!key) return null;
+
+  let hash = 0;
+  for (let index = 0; index < key.length; index += 1) {
+    hash = (hash * 31 + key.charCodeAt(index)) | 0;
+  }
+  return componentPalette[Math.abs(hash) % componentPalette.length];
 };

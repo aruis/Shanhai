@@ -64,7 +64,7 @@ const valueGridStyle = {
 
 const valueRowStyle = {
   display: 'grid',
-  gridTemplateColumns: '76px 1fr',
+  gridTemplateColumns: '88px 1fr',
   gap: 8,
   alignItems: 'center',
   minHeight: 28,

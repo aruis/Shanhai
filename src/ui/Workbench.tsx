@@ -10,11 +10,25 @@ import { InspectorPanel } from './components/InspectorPanel';
 import { LayerPanel } from './components/LayerPanel';
 import { MetricsPanel } from './components/MetricsPanel';
 import { useSimWorker } from '../hooks/useSimWorker';
+import { stableDefaultParams } from '../sim/params';
+
+type MetricHistoryPoint = Record<string, unknown>;
+type PresetId =
+  | 'stable_default'
+  | 'wet_world'
+  | 'dry_world'
+  | 'fast_river'
+  | 'lake_heavy';
+type WorkbenchLayerState = LayerState & {
+  flowArrows: boolean;
+  components: boolean;
+};
 
 type SimWorkerApi = {
   snapshot?: EcoSnapshot | null;
   currentSnapshot?: EcoSnapshot | null;
   metrics?: Record<string, unknown> | null;
+  metricsHistory?: MetricHistoryPoint[];
   running?: boolean;
   isRunning?: boolean;
   isReady?: boolean;
@@ -28,6 +42,7 @@ type SimWorkerApi = {
     pause?: () => void;
     setSpeed?: (speed: number) => void;
     setScenario?: (scenario: Record<string, unknown>) => void;
+    updateParams?: (params: Record<string, unknown>) => void;
     selectCell?: (selection: { x: number; y: number } | null) => void;
   };
   play?: () => void;
@@ -52,14 +67,81 @@ const initialLayers: LayerState = {
   surface: true,
   water: true,
   flow: true,
+} as LayerState;
+
+const initialWorkbenchLayers: WorkbenchLayerState = {
+  ...initialLayers,
+  flowArrows: true,
+  components: false,
+};
+
+const paramPresets: Array<{ id: PresetId; label: string }> = [
+  { id: 'stable_default', label: 'Stable Default' },
+  { id: 'wet_world', label: 'Wet World' },
+  { id: 'dry_world', label: 'Dry World' },
+  { id: 'fast_river', label: 'Fast River' },
+  { id: 'lake_heavy', label: 'Lake Heavy' },
+];
+
+const basePresetParams = stableDefaultParams as unknown as Record<string, unknown>;
+
+const presetParams: Record<PresetId, Record<string, unknown>> = {
+  stable_default: basePresetParams,
+  wet_world: {
+    ...basePresetParams,
+    springOutput: { spring: 4.2, summer: 3.3, autumn: 1.8, winter: 0.3 },
+    evaporationRate: {
+      spring: 0.0014,
+      summer: 0.0025,
+      autumn: 0.0014,
+      winter: 0.0006,
+    },
+    seepageRate: 0.0009,
+    wetWaterThreshold: 0.035,
+  },
+  dry_world: {
+    ...basePresetParams,
+    springOutput: { spring: 1.7, summer: 1.1, autumn: 0.5, winter: 0 },
+    evaporationRate: {
+      spring: 0.0032,
+      summer: 0.0068,
+      autumn: 0.003,
+      winter: 0.0014,
+    },
+    seepageRate: 0.0024,
+    wetWaterThreshold: 0.065,
+  },
+  fast_river: {
+    ...basePresetParams,
+    maxOutflowRatio: 0.92,
+    flatDiffusionRatio: 0.42,
+    flowMemoryDecay: 0.96,
+    riverThreshold: 1.25,
+    riverFormTicks: 1,
+    riverDryTicks: 10,
+  },
+  lake_heavy: {
+    ...basePresetParams,
+    flatDiffusionRatio: 0.18,
+    standingWaterDecay: 0.985,
+    lakeMemoryThreshold: 1.6,
+    lakeOutflowRatioThreshold: 0.96,
+    lakeFormTicks: 1,
+    lakeMinWater: 0.16,
+    lakeSpillRate: 0.24,
+    lakeSpillMax: 0.8,
+  },
 };
 
 export function Workbench() {
   const sim = useSimWorker({ speed: 10 }) as SimWorkerApi;
   const [scenario, setScenario] = useState(sim.scenario ?? scenarios[0].id);
+  const [paramPreset, setParamPreset] = useState<PresetId>('stable_default');
   const [localRunning, setLocalRunning] = useState(false);
   const [speed, setLocalSpeed] = useState(sim.speed ?? 1);
-  const [layers, setLayers] = useState<LayerState>(initialLayers);
+  const [layers, setLayers] = useState<WorkbenchLayerState>(
+    initialWorkbenchLayers,
+  );
   const [selectedCell, setSelectedCell] = useState<{ x: number; y: number } | null>(
     null,
   );
@@ -75,6 +157,7 @@ export function Workbench() {
   const workerPlay = sim.commands?.play;
   const workerStep = sim.commands?.step;
   const workerSetSpeed = sim.commands?.setSpeed;
+  const workerUpdateParams = sim.commands?.updateParams;
   const workerSelectCell = sim.commands?.selectCell;
   const legacyLoadScenario = sim.loadScenario;
   const legacySetScenario = sim.setScenario;
@@ -129,6 +212,14 @@ export function Workbench() {
     [legacySetSpeed, workerSetSpeed],
   );
 
+  const changeParamPreset = useCallback(
+    (preset: PresetId) => {
+      setParamPreset(preset);
+      workerUpdateParams?.(presetParams[preset]);
+    },
+    [workerUpdateParams],
+  );
+
   const selectCell = useCallback(
     (x: number, y: number) => {
       setSelectedCell({ x, y });
@@ -142,9 +233,18 @@ export function Workbench() {
     () => buildMetrics(snapshot, sim.metrics),
     [sim.metrics, snapshot],
   );
+  const metricsHistory = useMemo(
+    () => buildMetricsHistory(sim.metricsHistory, snapshot, sim.metrics),
+    [sim.metrics, sim.metricsHistory, snapshot],
+  );
+  const workerSelectedCell = sim.selectedCell;
+  const inspectorCell = useMemo(
+    () => resolveInspectorCell(selectedCell, workerSelectedCell),
+    [selectedCell, workerSelectedCell],
+  );
   const inspectorValues = useMemo(
-    () => buildInspectorValues(snapshot, selectedCell),
-    [snapshot, selectedCell],
+    () => buildInspectorValues(snapshot, inspectorCell),
+    [inspectorCell, snapshot],
   );
 
   return (
@@ -167,7 +267,10 @@ export function Workbench() {
             scenario={scenario}
             running={running}
             speed={effectiveSpeed}
+            paramPresets={paramPresets}
+            paramPreset={paramPreset}
             onScenarioChange={setScenario}
+            onParamPresetChange={(preset) => changeParamPreset(preset as PresetId)}
             onToggleRunning={toggleRunning}
             onStep={step}
             onSpeedChange={changeSpeed}
@@ -185,12 +288,12 @@ export function Workbench() {
         </section>
 
         <aside style={rightRailStyle}>
-          <InspectorPanel cell={selectedCell} values={inspectorValues} />
+          <InspectorPanel cell={inspectorCell} values={inspectorValues} />
         </aside>
       </section>
 
       <footer style={footerStyle}>
-        <MetricsPanel metrics={metrics} />
+        <MetricsPanel metrics={metrics} history={metricsHistory} />
       </footer>
     </main>
   );
@@ -279,6 +382,42 @@ const metricValue = (
   return null;
 };
 
+const historyValue = (item: Record<string, unknown>, keys: string[]) =>
+  metricValue(item, keys) ?? null;
+
+const buildMetricsHistory = (
+  history: MetricHistoryPoint[] | undefined,
+  snapshot: EcoSnapshot | null,
+  sourceMetrics: Record<string, unknown> | null | undefined,
+) => {
+  const source = history?.length
+    ? history
+    : sourceMetrics
+      ? [sourceMetrics]
+      : [];
+
+  const mapped = source.map((item, index) => ({
+    tick: Number(item.tick ?? index),
+    totalWater: historyValue(item, ['totalWater', 'waterTotal', 'water']),
+    riverCells: historyValue(item, ['riverCells', 'rivers']),
+    lakeCells: historyValue(item, ['lakeCells', 'lakes']),
+  }));
+
+  if (mapped.length) return mapped;
+
+  const width = snapshot?.width ?? 64;
+  const height = snapshot?.height ?? 64;
+  const avgWater = layerAverage(snapshot?.W, width, height);
+  return [
+    {
+      tick: Number(snapshot?.tick ?? 0),
+      totalWater: avgWater === null ? null : avgWater * width * height,
+      riverCells: null,
+      lakeCells: null,
+    },
+  ];
+};
+
 const buildMetrics = (
   snapshot: EcoSnapshot | null,
   sourceMetrics: Record<string, unknown> | null | undefined,
@@ -313,18 +452,59 @@ const buildMetrics = (
 
 const buildInspectorValues = (
   snapshot: EcoSnapshot | null,
-  cell: { x: number; y: number } | null,
+  cell: ({ x: number; y: number } & Record<string, unknown>) | null,
 ) => {
   if (!snapshot || !cell) return [];
   const width = snapshot.width ?? 64;
   const { x, y } = cell;
+  const workerCell = getRecord(cell.cell);
+  const budget = getRecord(
+    workerCell?.waterBudget ?? workerCell?.budget ?? workerCell?.water_budget,
+  );
+  const componentId =
+    workerCell?.componentId ??
+    workerCell?.component ??
+    workerCell?.componentID ??
+    readCell(
+      pickLayer(snapshot, ['componentId', 'componentIds', 'components']),
+      x,
+      y,
+      width,
+    );
 
   return [
-    { label: 'H', value: formatValue(readCell(snapshot.H, x, y, width)) },
-    { label: 'B', value: formatValue(readCell(snapshot.B, x, y, width)) },
-    { label: 'S', value: formatValue(readCell(snapshot.S, x, y, width)) },
-    { label: 'W', value: formatValue(readCell(snapshot.W, x, y, width)) },
-    { label: 'F', value: formatValue(readCell(snapshot.F, x, y, width)) },
+    {
+      label: 'H',
+      value: formatValue(
+        workerCell?.height ?? workerCell?.H ?? readCell(snapshot.H, x, y, width),
+      ),
+    },
+    {
+      label: 'B',
+      value: formatValue(
+        workerCell?.base ?? workerCell?.B ?? readCell(snapshot.B, x, y, width),
+      ),
+    },
+    {
+      label: 'S',
+      value: formatValue(
+        workerCell?.surface ??
+          workerCell?.S ??
+          readCell(snapshot.S, x, y, width),
+      ),
+    },
+    {
+      label: 'W',
+      value: formatValue(
+        workerCell?.water ?? workerCell?.W ?? readCell(snapshot.W, x, y, width),
+      ),
+    },
+    {
+      label: 'F',
+      value: formatValue(
+        workerCell?.flow ?? workerCell?.F ?? readCell(snapshot.F, x, y, width),
+      ),
+    },
     {
       label: 'FlowMem',
       value: formatValue(readCell(snapshot.flowMemory, x, y, width)),
@@ -333,14 +513,53 @@ const buildInspectorValues = (
       label: 'WaterMem',
       value: formatValue(readCell(snapshot.standingWaterMemory, x, y, width)),
     },
+    { label: 'Component', value: formatValue(componentId) },
+    { label: 'Source', value: formatBudgetValue(workerCell, budget, 'source') },
+    { label: 'Inflow', value: formatBudgetValue(workerCell, budget, 'inflow') },
+    { label: 'Outflow', value: formatBudgetValue(workerCell, budget, 'outflow') },
+    {
+      label: 'Evap',
+      value: formatBudgetValue(workerCell, budget, 'evaporation'),
+    },
+    { label: 'Seepage', value: formatBudgetValue(workerCell, budget, 'seepage') },
+    {
+      label: 'OceanSink',
+      value: formatBudgetValue(workerCell, budget, 'oceanSink'),
+    },
   ];
+};
+
+const getRecord = (value: unknown): Record<string, unknown> | null =>
+  value && typeof value === 'object' ? (value as Record<string, unknown>) : null;
+
+const formatBudgetValue = (
+  cell: Record<string, unknown> | null,
+  budget: Record<string, unknown> | null,
+  key: string,
+) => formatValue(budget?.[key] ?? cell?.[key]);
+
+const resolveInspectorCell = (
+  localCell: { x: number; y: number } | null,
+  workerCell: Record<string, unknown> | null | undefined,
+) => {
+  if (
+    workerCell &&
+    typeof workerCell.x === 'number' &&
+    typeof workerCell.y === 'number' &&
+    workerCell.cell !== undefined
+  ) {
+    return workerCell as { x: number; y: number } & Record<string, unknown>;
+  }
+
+  if (!localCell) return null;
+  return localCell;
 };
 
 const rootStyle = {
   width: '100vw',
   height: '100vh',
   display: 'grid',
-  gridTemplateRows: '58px minmax(0, 1fr) 132px',
+  gridTemplateRows: '58px minmax(0, 1fr) 184px',
   overflow: 'hidden',
   color: '#e6edf3',
   background: '#0b1016',

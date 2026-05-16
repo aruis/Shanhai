@@ -43,6 +43,15 @@ export interface SimState {
   water: Float64Array;
   moisture: Float64Array;
   flow: Float64Array;
+  hydrologySource: Float64Array;
+  hydrologyInflow: Float64Array;
+  hydrologyOutflow: Float64Array;
+  hydrologyEvaporation: Float64Array;
+  hydrologySeepage: Float64Array;
+  hydrologyOceanSink: Float64Array;
+  flowDirection: Int8Array;
+  riverComponent: Int32Array;
+  lakeComponent: Int32Array;
   flowMemory: Float64Array;
   standingWaterMemory: Float64Array;
   riverTicks: Uint16Array;
@@ -102,6 +111,10 @@ export interface Metrics {
   maxWater: number;
   meanWater: number;
   flowThrough: number;
+  riverComponentCount: number;
+  lakeComponentCount: number;
+  largestLakeSize: number;
+  largestRiverSize: number;
 }
 
 export interface Scenario {

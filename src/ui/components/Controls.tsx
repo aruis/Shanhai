@@ -6,7 +6,10 @@ interface ControlsProps {
   scenario: string;
   running: boolean;
   speed: number;
+  paramPresets: Array<{ id: string; label: string }>;
+  paramPreset: string;
   onScenarioChange: (scenario: string) => void;
+  onParamPresetChange: (preset: string) => void;
   onToggleRunning: () => void;
   onStep: () => void;
   onSpeedChange: (speed: number) => void;
@@ -17,7 +20,10 @@ export function Controls({
   scenario,
   running,
   speed,
+  paramPresets,
+  paramPreset,
   onScenarioChange,
+  onParamPresetChange,
   onToggleRunning,
   onStep,
   onSpeedChange,
@@ -33,6 +39,21 @@ export function Controls({
           style={selectStyle}
         >
           {scenarios.map((item) => (
+            <option key={item.id} value={item.id}>
+              {item.label}
+            </option>
+          ))}
+        </select>
+      </label>
+
+      <label style={labelStyle}>
+        Param preset
+        <select
+          value={paramPreset}
+          onChange={(event) => onParamPresetChange(event.target.value)}
+          style={selectStyle}
+        >
+          {paramPresets.map((item) => (
             <option key={item.id} value={item.id}>
               {item.label}
             </option>

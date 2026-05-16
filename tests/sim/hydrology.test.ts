@@ -49,4 +49,63 @@ describe("hydrology MVP", () => {
     );
     expect(lakeCells).toBeGreaterThan(0);
   });
+
+  it("exposes hydrology component metrics and labels", () => {
+    const sim = createSimulation("basinLake", stableDefaultParams);
+    sim.step(180);
+
+    const metrics = sim.metrics();
+    const snapshot = sim.getSnapshot();
+
+    expect(metrics.riverComponentCount).toBeGreaterThanOrEqual(0);
+    expect(metrics.lakeComponentCount).toBeGreaterThan(0);
+    expect(metrics.largestLakeSize).toBeGreaterThan(0);
+    expect(metrics.largestRiverSize).toBeGreaterThanOrEqual(0);
+    expect(snapshot.riverComponent.length).toBe(sim.state.width * sim.state.height);
+    expect(snapshot.lakeComponent.length).toBe(sim.state.width * sim.state.height);
+    expect(snapshot.flowDirection.length).toBe(sim.state.width * sim.state.height);
+    expect(Array.from(snapshot.flowDirection).every((direction) => direction >= -1 && direction <= 7)).toBe(
+      true,
+    );
+    expect(Array.from(snapshot.lakeComponent).some((component) => component >= 0)).toBe(true);
+  });
+
+  it("exposes readable non-negative per-cell hydrology budgets", () => {
+    const sim = createSimulation("slopeToOcean", stableDefaultParams);
+    sim.step(4);
+    const snapshot = sim.getSnapshot();
+    const spring = sim.state.springs[0].index;
+    const x = spring % sim.state.width;
+    const y = Math.floor(spring / sim.state.width);
+    const cell = sim.getCell(x, y);
+
+    expect(cell).not.toBeNull();
+    expect(cell?.hydrologySource).toBeGreaterThanOrEqual(0);
+    expect(cell?.hydrologyInflow).toBeGreaterThanOrEqual(0);
+    expect(cell?.hydrologyOutflow).toBeGreaterThanOrEqual(0);
+    expect(cell?.hydrologyEvaporation).toBeGreaterThanOrEqual(0);
+    expect(cell?.hydrologySeepage).toBeGreaterThanOrEqual(0);
+    expect(cell?.hydrologyOceanSink).toBeGreaterThanOrEqual(0);
+    expect(snapshot.hydrologySource[spring]).toBeGreaterThan(0);
+
+    for (const budget of [
+      snapshot.hydrologySource,
+      snapshot.hydrologyInflow,
+      snapshot.hydrologyOutflow,
+      snapshot.hydrologyEvaporation,
+      snapshot.hydrologySeepage,
+      snapshot.hydrologyOceanSink,
+    ]) {
+      for (const amount of budget) {
+        expect(amount).toBeGreaterThanOrEqual(0);
+      }
+    }
+  });
+
+  it("reports a largest lake size after basinLake runs", () => {
+    const sim = createSimulation("basinLake", stableDefaultParams);
+    sim.step(180);
+
+    expect(sim.metrics().largestLakeSize).toBeGreaterThan(0);
+  });
 });

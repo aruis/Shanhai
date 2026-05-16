@@ -1,16 +1,23 @@
 import type { CSSProperties } from 'react';
 import type { LayerState } from '../../render/PixiViewport';
 
+type WorkbenchLayerState = LayerState & {
+  flowArrows?: boolean;
+  components?: boolean;
+};
+
 interface LayerPanelProps {
-  layers: LayerState;
-  onChange: (layers: LayerState) => void;
+  layers: WorkbenchLayerState;
+  onChange: (layers: WorkbenchLayerState) => void;
 }
 
-const layerLabels: Array<[keyof LayerState, string]> = [
+const layerLabels: Array<[keyof WorkbenchLayerState, string]> = [
   ['height', 'Height'],
   ['surface', 'Surface'],
   ['water', 'Water'],
   ['flow', 'Flow'],
+  ['flowArrows', 'Flow arrows'],
+  ['components', 'Components'],
 ];
 
 export function LayerPanel({ layers, onChange }: LayerPanelProps) {
@@ -22,7 +29,7 @@ export function LayerPanel({ layers, onChange }: LayerPanelProps) {
           <label key={key} style={toggleStyle}>
             <input
               type="checkbox"
-              checked={layers[key]}
+              checked={Boolean(layers[key])}
               onChange={(event) =>
                 onChange({ ...layers, [key]: event.target.checked })
               }

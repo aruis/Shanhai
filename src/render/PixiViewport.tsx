@@ -1,7 +1,9 @@
 import { useEffect, useMemo, useRef, type CSSProperties } from 'react';
 import { Application, Graphics } from 'pixi.js';
 import {
+  componentColor,
   flowAlpha,
+  flowArrowColor,
   flowColor,
   heightColor,
   surfaceColor,
@@ -26,6 +28,10 @@ export interface EcoSnapshot {
   W?: MatrixLayer;
   F?: MatrixLayer;
   flowMemory?: MatrixLayer;
+  flowDirection?: MatrixLayer;
+  dominantFlowDirection?: MatrixLayer;
+  lakeComponent?: MatrixLayer;
+  riverComponent?: MatrixLayer;
   standingWaterMemory?: MatrixLayer;
   tick?: number;
   season?: string | number;
@@ -37,6 +43,8 @@ export interface LayerState {
   surface: boolean;
   water: boolean;
   flow: boolean;
+  flowArrows: boolean;
+  components: boolean;
 }
 
 interface PixiViewportProps {
@@ -58,6 +66,105 @@ const readCell = (
   const maybeRows = layer as CellValue[][];
   if (Array.isArray(maybeRows[0])) return maybeRows[y]?.[x];
   return (layer as ArrayLike<CellValue>)[y * width + x];
+};
+
+const pickSnapshotLayer = (
+  snapshot: EcoSnapshot | null | undefined,
+  keys: string[],
+): MatrixLayer => {
+  if (!snapshot) return undefined;
+  const nested =
+    typeof snapshot.layers === 'object' && snapshot.layers !== null
+      ? (snapshot.layers as Record<string, unknown>)
+      : null;
+
+  for (const key of keys) {
+    const direct = snapshot[key];
+    if (direct !== undefined) return direct as MatrixLayer;
+    const nestedValue = nested?.[key];
+    if (nestedValue !== undefined) return nestedValue as MatrixLayer;
+  }
+
+  return undefined;
+};
+
+const componentKey = (value: CellValue) => {
+  if (value === null || value === undefined || value === false) return null;
+  const numeric = Number(value);
+  if (Number.isFinite(numeric) && numeric < 0) return null;
+  return String(value);
+};
+
+const directionFromValue = (
+  value: CellValue,
+): { dx: number; dy: number; strength: number } | null => {
+  if (value === null || value === undefined || value === false) return null;
+
+  if (Array.isArray(value)) {
+    const dx = Number(value[0] ?? 0);
+    const dy = Number(value[1] ?? 0);
+    const strength = Number(value[2] ?? 1);
+    return normalizeDirection(dx, dy, strength);
+  }
+
+  if (typeof value === 'object') {
+    const record = value as Record<string, unknown>;
+    const dx = Number(record.dx ?? record.x ?? 0);
+    const dy = Number(record.dy ?? record.y ?? 0);
+    const strength = Number(record.strength ?? record.magnitude ?? record.amount ?? 1);
+    return normalizeDirection(dx, dy, strength);
+  }
+
+  const numeric = Number(value);
+  if (Number.isFinite(numeric)) {
+    const rounded = Math.trunc(numeric);
+    const d8 = [
+      { dx: 1, dy: 0 },
+      { dx: 1, dy: 1 },
+      { dx: 0, dy: 1 },
+      { dx: -1, dy: 1 },
+      { dx: -1, dy: 0 },
+      { dx: -1, dy: -1 },
+      { dx: 0, dy: -1 },
+      { dx: 1, dy: -1 },
+    ];
+    const direction = d8[((rounded % d8.length) + d8.length) % d8.length];
+    return { ...direction, strength: 1 };
+  }
+
+  const key = String(value).trim().toUpperCase();
+  const named: Record<string, { dx: number; dy: number }> = {
+    E: { dx: 1, dy: 0 },
+    EAST: { dx: 1, dy: 0 },
+    SE: { dx: 1, dy: 1 },
+    SOUTHEAST: { dx: 1, dy: 1 },
+    S: { dx: 0, dy: 1 },
+    SOUTH: { dx: 0, dy: 1 },
+    SW: { dx: -1, dy: 1 },
+    SOUTHWEST: { dx: -1, dy: 1 },
+    W: { dx: -1, dy: 0 },
+    WEST: { dx: -1, dy: 0 },
+    NW: { dx: -1, dy: -1 },
+    NORTHWEST: { dx: -1, dy: -1 },
+    N: { dx: 0, dy: -1 },
+    NORTH: { dx: 0, dy: -1 },
+    NE: { dx: 1, dy: -1 },
+    NORTHEAST: { dx: 1, dy: -1 },
+  };
+
+  const direction = named[key];
+  return direction ? { ...direction, strength: 1 } : null;
+};
+
+const normalizeDirection = (dx: number, dy: number, strength: number) => {
+  if (!Number.isFinite(dx) || !Number.isFinite(dy)) return null;
+  const magnitude = Math.hypot(dx, dy);
+  if (magnitude <= 0.0001) return null;
+  return {
+    dx: dx / magnitude,
+    dy: dy / magnitude,
+    strength: Number.isFinite(strength) ? Math.max(0, strength) : 1,
+  };
 };
 
 const resolveDimensions = (snapshot: EcoSnapshot | null) => ({
@@ -223,6 +330,14 @@ export function PixiViewport({
     overlay.clear();
 
     grid.rect(0, 0, viewportWidth, viewportHeight).fill(0x090d12);
+    const riverComponents = pickSnapshotLayer(currentSnapshot, [
+      'riverComponent',
+      'river_component',
+    ]);
+    const lakeComponents = pickSnapshotLayer(currentSnapshot, [
+      'lakeComponent',
+      'lake_component',
+    ]);
 
     for (let y = 0; y < height; y += 1) {
       for (let x = 0; x < width; x += 1) {
@@ -274,7 +389,43 @@ export function PixiViewport({
               .fill({ color, alpha: flowAlpha(flow) });
           }
         }
+
+        if (currentLayers.components) {
+          const riverComponent = readCell(riverComponents, x, y, width);
+          const lakeComponent = readCell(lakeComponents, x, y, width);
+          const hasRiverComponent = componentKey(riverComponent) !== null;
+          const color = componentColor(riverComponent ?? lakeComponent);
+          if (color !== null) {
+            grid
+              .rect(px, py, cellSize, cellSize)
+              .fill({ color, alpha: hasRiverComponent ? 0.18 : 0.13 });
+          }
+        }
       }
+    }
+
+    if (currentLayers.components) {
+      drawComponentBoundaries(
+        grid,
+        currentSnapshot,
+        width,
+        height,
+        cellSize,
+        offsetX,
+        offsetY,
+      );
+    }
+
+    if (currentLayers.flowArrows) {
+      drawFlowArrows(
+        grid,
+        currentSnapshot,
+        width,
+        height,
+        cellSize,
+        offsetX,
+        offsetY,
+      );
     }
 
     if (cellSize >= 8) {
@@ -303,6 +454,114 @@ export function PixiViewport({
 
   return <div ref={hostRef} style={viewportStyle} />;
 }
+
+const drawComponentBoundaries = (
+  target: Graphics,
+  snapshot: EcoSnapshot | null,
+  width: number,
+  height: number,
+  cellSize: number,
+  offsetX: number,
+  offsetY: number,
+) => {
+  const riverComponents = pickSnapshotLayer(snapshot, [
+    'riverComponent',
+    'river_component',
+  ]);
+  const lakeComponents = pickSnapshotLayer(snapshot, [
+    'lakeComponent',
+    'lake_component',
+  ]);
+  if (!riverComponents && !lakeComponents) return;
+
+  const drawBoundaryForLayer = (layer: MatrixLayer, color: number, alpha: number) => {
+    if (!layer) return;
+    for (let y = 0; y < height; y += 1) {
+      for (let x = 0; x < width; x += 1) {
+        const key = componentKey(readCell(layer, x, y, width));
+        if (key === null) continue;
+
+        const px = offsetX + x * cellSize;
+        const py = offsetY + y * cellSize;
+        const rightKey =
+          x === width - 1 ? null : componentKey(readCell(layer, x + 1, y, width));
+        const downKey =
+          y === height - 1 ? null : componentKey(readCell(layer, x, y + 1, width));
+
+        if (rightKey !== key) {
+          target.moveTo(px + cellSize, py).lineTo(px + cellSize, py + cellSize);
+        }
+        if (downKey !== key) {
+          target.moveTo(px, py + cellSize).lineTo(px + cellSize, py + cellSize);
+        }
+      }
+    }
+    target.stroke({ width: Math.max(1, Math.floor(cellSize * 0.08)), color, alpha });
+  };
+
+  drawBoundaryForLayer(lakeComponents, 0x8bd3ff, 0.44);
+  drawBoundaryForLayer(riverComponents, 0x7cffc8, 0.5);
+};
+
+const drawFlowArrows = (
+  target: Graphics,
+  snapshot: EcoSnapshot | null,
+  width: number,
+  height: number,
+  cellSize: number,
+  offsetX: number,
+  offsetY: number,
+) => {
+  const directionLayer = pickSnapshotLayer(snapshot, [
+    'flowDirection',
+    'flow_direction',
+    'dominantFlowDirection',
+    'dominant_flow_direction',
+  ]);
+  if (!directionLayer || cellSize < 6) return;
+
+  const step = cellSize < 11 ? 2 : 1;
+  const arrowLength = Math.max(3, cellSize * 0.52);
+  const headLength = Math.max(2, cellSize * 0.18);
+  const headSpread = Math.max(1.5, cellSize * 0.14);
+
+  for (let y = 0; y < height; y += step) {
+    for (let x = 0; x < width; x += step) {
+      const direction = directionFromValue(readCell(directionLayer, x, y, width));
+      if (!direction) continue;
+
+      const centerX = offsetX + x * cellSize + cellSize / 2;
+      const centerY = offsetY + y * cellSize + cellSize / 2;
+      const length = arrowLength * Math.min(1, 0.72 + direction.strength * 0.28);
+      const halfLength = length / 2;
+      const startX = centerX - direction.dx * halfLength;
+      const startY = centerY - direction.dy * halfLength;
+      const endX = centerX + direction.dx * halfLength;
+      const endY = centerY + direction.dy * halfLength;
+      const normalX = -direction.dy;
+      const normalY = direction.dx;
+
+      target.moveTo(startX, startY).lineTo(endX, endY);
+      target
+        .moveTo(endX, endY)
+        .lineTo(
+          endX - direction.dx * headLength + normalX * headSpread,
+          endY - direction.dy * headLength + normalY * headSpread,
+        )
+        .moveTo(endX, endY)
+        .lineTo(
+          endX - direction.dx * headLength - normalX * headSpread,
+          endY - direction.dy * headLength - normalY * headSpread,
+        );
+    }
+  }
+
+  target.stroke({
+    width: Math.max(1, Math.floor(cellSize * 0.11)),
+    color: flowArrowColor,
+    alpha: 0.78,
+  });
+};
 
 const viewportStyle = {
   width: '100%',

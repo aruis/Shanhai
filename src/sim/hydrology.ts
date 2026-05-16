@@ -1,4 +1,5 @@
-import { idx, neighbors } from "./indexing";
+import { neighbors } from "./indexing";
+import { updateHydrologyComponents } from "./metrics";
 import { BaseTerrain, HydrologyStats, Params, Season, SimState, Surface } from "./types";
 
 const EPSILON = 1e-9;
@@ -39,6 +40,12 @@ export function stepHydrology(state: SimState, params: Params): SimState {
   const nextMoisture = new Float64Array(state.moisture);
   const inflow = new Float64Array(size);
   const outflow = new Float64Array(size);
+  const source = new Float64Array(size);
+  const evaporationByCell = new Float64Array(size);
+  const seepageByCell = new Float64Array(size);
+  const oceanSink = new Float64Array(size);
+  const flowDirection = new Int8Array(size).fill(-1);
+  const dominantOutflow = new Float64Array(size);
   const stats = emptyStats();
 
   for (const spring of state.springs) {
@@ -47,12 +54,14 @@ export function stepHydrology(state: SimState, params: Params): SimState {
     if (amount <= 0) continue;
     workingWater[spring.index] += amount;
     nextWater[spring.index] += amount;
+    source[spring.index] += amount;
     stats.source += amount;
   }
 
   for (let i = 0; i < size; i++) {
     if (isOcean(state, i)) {
       stats.oceanSink += nextWater[i];
+      oceanSink[i] += nextWater[i];
       nextWater[i] = 0;
       continue;
     }
@@ -87,9 +96,11 @@ export function stepHydrology(state: SimState, params: Params): SimState {
         if (amount <= EPSILON) continue;
         nextWater[i] -= amount;
         outflow[i] += amount;
+        recordDominantFlow(state, flowDirection, dominantOutflow, i, n, amount);
         stats.outflow += amount;
         if (isOcean(state, n)) {
           stats.oceanSink += amount;
+          oceanSink[n] += amount;
         } else {
           nextWater[n] += amount;
           inflow[n] += amount;
@@ -113,18 +124,29 @@ export function stepHydrology(state: SimState, params: Params): SimState {
       nextWater[i] -= amountEach;
       nextWater[n] += amountEach;
       outflow[i] += amountEach;
+      recordDominantFlow(state, flowDirection, dominantOutflow, i, n, amountEach);
       inflow[n] += amountEach;
       stats.outflow += amountEach;
       stats.inflow += amountEach;
     }
   }
 
-  applyLakeSpill(state, nextWater, inflow, outflow, stats, params);
+  applyLakeSpill(
+    state,
+    nextWater,
+    inflow,
+    outflow,
+    flowDirection,
+    dominantOutflow,
+    stats,
+    params,
+  );
 
   const nextFlow = new Float64Array(size);
   for (let i = 0; i < size; i++) {
     if (isOcean(state, i)) {
       stats.oceanSink += nextWater[i];
+      oceanSink[i] += nextWater[i];
       nextWater[i] = 0;
       nextMoisture[i] = params.oceanMoistureBaseline;
       nextFlow[i] = 0;
@@ -146,6 +168,8 @@ export function stepHydrology(state: SimState, params: Params): SimState {
     nextMoisture[i] = Math.max(0, nextMoisture[i] - params.moistureEvaporationRate);
     stats.evaporation += evaporation;
     stats.seepage += seepage;
+    evaporationByCell[i] = evaporation;
+    seepageByCell[i] = seepage;
 
     if (nextWater[i] < EPSILON) nextWater[i] = 0;
     nextFlow[i] = inflow[i] + outflow[i];
@@ -204,6 +228,14 @@ export function stepHydrology(state: SimState, params: Params): SimState {
   state.moisture = nextMoisture;
   state.flow = nextFlow;
   state.surface = nextSurface;
+  state.hydrologySource = source;
+  state.hydrologyInflow = inflow;
+  state.hydrologyOutflow = outflow;
+  state.hydrologyEvaporation = evaporationByCell;
+  state.hydrologySeepage = seepageByCell;
+  state.hydrologyOceanSink = oceanSink;
+  state.flowDirection = flowDirection;
+  updateHydrologyComponents(state);
   state.tick++;
   state.lastStats = stats;
   return state;
@@ -214,6 +246,8 @@ function applyLakeSpill(
   water: Float64Array,
   inflow: Float64Array,
   outflow: Float64Array,
+  flowDirection: Int8Array,
+  dominantOutflow: Float64Array,
   stats: HydrologyStats,
   params: Params,
 ): void {
@@ -240,6 +274,7 @@ function applyLakeSpill(
 
     const lakeLevel = levelSum / component.length;
     let bestBoundary = -1;
+    let bestOutlet = -1;
     let bestLevel = Number.POSITIVE_INFINITY;
     for (const cell of component) {
       for (const n of neighbors(cell, state.width, state.height)) {
@@ -248,6 +283,7 @@ function applyLakeSpill(
         if (level < bestLevel) {
           bestLevel = level;
           bestBoundary = n;
+          bestOutlet = cell;
         }
       }
     }
@@ -268,9 +304,53 @@ function applyLakeSpill(
     if (actualSpill <= EPSILON) continue;
     water[bestBoundary] += actualSpill;
     inflow[bestBoundary] += actualSpill;
+    if (bestOutlet >= 0) {
+      recordDominantFlow(
+        state,
+        flowDirection,
+        dominantOutflow,
+        bestOutlet,
+        bestBoundary,
+        actualSpill,
+      );
+    }
     stats.outflow += actualSpill;
     stats.inflow += actualSpill;
   }
+}
+
+function recordDominantFlow(
+  state: SimState,
+  flowDirection: Int8Array,
+  dominantOutflow: Float64Array,
+  from: number,
+  to: number,
+  amount: number,
+): void {
+  if (amount <= dominantOutflow[from]) return;
+  const direction = directionCode(state, from, to);
+  if (direction < 0) return;
+  dominantOutflow[from] = amount;
+  flowDirection[from] = direction;
+}
+
+function directionCode(state: SimState, from: number, to: number): number {
+  const fx = from % state.width;
+  const fy = Math.floor(from / state.width);
+  const tx = to % state.width;
+  const ty = Math.floor(to / state.width);
+  const dx = Math.sign(tx - fx);
+  const dy = Math.sign(ty - fy);
+
+  if (dx === 0 && dy === -1) return 0;
+  if (dx === 1 && dy === -1) return 1;
+  if (dx === 1 && dy === 0) return 2;
+  if (dx === 1 && dy === 1) return 3;
+  if (dx === 0 && dy === 1) return 4;
+  if (dx === -1 && dy === 1) return 5;
+  if (dx === -1 && dy === 0) return 6;
+  if (dx === -1 && dy === -1) return 7;
+  return -1;
 }
 
 function countNearbyLakeCells(state: SimState, start: number): number {

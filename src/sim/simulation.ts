@@ -24,6 +24,15 @@ export interface SimSnapshot {
   W: Float64Array;
   M: Float64Array;
   F: Float64Array;
+  hydrologySource: Float64Array;
+  hydrologyInflow: Float64Array;
+  hydrologyOutflow: Float64Array;
+  hydrologyEvaporation: Float64Array;
+  hydrologySeepage: Float64Array;
+  hydrologyOceanSink: Float64Array;
+  flowDirection: Int8Array;
+  riverComponent: Int32Array;
+  lakeComponent: Int32Array;
   flowMemory: Float64Array;
   standingWaterMemory: Float64Array;
 }
@@ -86,6 +95,15 @@ export function createSimulation(
         W: state.water,
         M: state.moisture,
         F: state.flow,
+        hydrologySource: state.hydrologySource,
+        hydrologyInflow: state.hydrologyInflow,
+        hydrologyOutflow: state.hydrologyOutflow,
+        hydrologyEvaporation: state.hydrologyEvaporation,
+        hydrologySeepage: state.hydrologySeepage,
+        hydrologyOceanSink: state.hydrologyOceanSink,
+        flowDirection: state.flowDirection,
+        riverComponent: state.riverComponent,
+        lakeComponent: state.lakeComponent,
         flowMemory: state.flowMemory,
         standingWaterMemory: state.standingWaterMemory,
       };
@@ -119,6 +137,15 @@ export function createSimulation(
         water: state.water[i],
         moisture: state.moisture[i],
         flow: state.flow[i],
+        hydrologySource: state.hydrologySource[i],
+        hydrologyInflow: state.hydrologyInflow[i],
+        hydrologyOutflow: state.hydrologyOutflow[i],
+        hydrologyEvaporation: state.hydrologyEvaporation[i],
+        hydrologySeepage: state.hydrologySeepage[i],
+        hydrologyOceanSink: state.hydrologyOceanSink[i],
+        flowDirection: state.flowDirection[i],
+        riverComponent: state.riverComponent[i],
+        lakeComponent: state.lakeComponent[i],
         flowMemory: state.flowMemory[i],
         standingWaterMemory: state.standingWaterMemory[i],
       };
