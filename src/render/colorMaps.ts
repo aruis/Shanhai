@@ -121,6 +121,18 @@ export const plantAlpha = (biomassValue?: CellValue): number => {
   return 0.34 + clamp01(Number.isFinite(biomass) ? biomass : 0.6) * 0.46;
 };
 
+export const animalColor = (value: CellValue): number | null => {
+  const count = Number(value ?? 0);
+  if (!Number.isFinite(count) || count <= 0) return null;
+  const t = clamp01(count / 4);
+  return rgb(lerp(222, 255, t), lerp(170, 222, t), lerp(88, 126, t));
+};
+
+export const animalAlpha = (value: CellValue): number => {
+  const count = Number(value ?? 0);
+  return 0.45 + clamp01(count / 4) * 0.35;
+};
+
 const componentPalette = [
   0x4cc9f0,
   0x80d56f,

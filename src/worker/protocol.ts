@@ -37,8 +37,13 @@ export type SimMetrics = {
   herbaceous?: number;
   woody?: number;
   animals?: number;
+  animalCount?: number;
   aliveAnimals?: number;
   deadAnimals?: number;
+  animalDeaths?: number;
+  meanAnimalEnergy?: number;
+  meanAnimalThirst?: number;
+  totalGrazedBiomass?: number;
   [key: string]: unknown;
 };
 
@@ -48,6 +53,11 @@ export type SimSnapshot = {
   height?: number;
   metrics?: SimMetrics;
   layers?: Record<string, unknown>;
+  animalCount?: unknown;
+  animalEnergy?: unknown;
+  animalThirst?: unknown;
+  animalGrazing?: unknown;
+  animalDeaths?: unknown;
   cells?: unknown;
   [key: string]: unknown;
 };

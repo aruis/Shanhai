@@ -23,6 +23,7 @@ type WorkbenchLayerState = LayerState & {
   moisture: boolean;
   nutrient: boolean;
   plants: boolean;
+  animals: boolean;
   flowArrows: boolean;
   components: boolean;
 };
@@ -75,6 +76,7 @@ const initialLayers: LayerState = {
   moisture: true,
   nutrient: false,
   plants: true,
+  animals: true,
   flowArrows: true,
   components: false,
 } as LayerState;
@@ -419,6 +421,19 @@ const plantStressKeys = [
   'herb_stress',
 ];
 
+const animalCountKeys = [
+  'animalCount',
+  'animal_count',
+  'animals',
+  'animalDensity',
+  'animal_density',
+];
+
+const animalEnergyKeys = ['animalEnergy', 'animal_energy'];
+const animalThirstKeys = ['animalThirst', 'animal_thirst'];
+const animalGrazingKeys = ['animalGrazing', 'animal_grazing', 'grazing'];
+const animalDeathsKeys = ['animalDeaths', 'animal_deaths', 'deaths'];
+
 const adaptSnapshot = (snapshot: EcoSnapshot | null): EcoSnapshot | null => {
   if (!snapshot) return null;
   return {
@@ -440,6 +455,12 @@ const adaptSnapshot = (snapshot: EcoSnapshot | null): EcoSnapshot | null => {
     plantMaturity:
       snapshot.plantMaturity ?? pickLayer(snapshot, plantMaturityKeys),
     plantStress: snapshot.plantStress ?? pickLayer(snapshot, plantStressKeys),
+    animalCount: snapshot.animalCount ?? pickLayer(snapshot, animalCountKeys),
+    animalEnergy: snapshot.animalEnergy ?? pickLayer(snapshot, animalEnergyKeys),
+    animalThirst: snapshot.animalThirst ?? pickLayer(snapshot, animalThirstKeys),
+    animalGrazing:
+      snapshot.animalGrazing ?? pickLayer(snapshot, animalGrazingKeys),
+    animalDeaths: snapshot.animalDeaths ?? pickLayer(snapshot, animalDeathsKeys),
     hydrologySource:
       snapshot.hydrologySource ?? pickLayer(snapshot, ['hydrologySource']),
     hydrologyInflow:
@@ -792,6 +813,12 @@ const buildMetricsHistory = (
       'treeBiomass',
       'shrubBiomass',
     ]),
+    animalCount: historyValue(item, [
+      'animalCount',
+      'animals',
+      'aliveAnimals',
+      'herbivores',
+    ]),
     grassCoverage:
       historyValue(item, [
         'grassCoverage',
@@ -836,6 +863,7 @@ const buildMetricsHistory = (
       height,
     );
   const woodyBiomass = layerSum(snapshot?.woodyBiomass, width, height);
+  const animalCount = layerSum(snapshot?.animalCount, width, height);
   const grassland = buildGrasslandSignal(snapshot);
   return [
     {
@@ -849,6 +877,7 @@ const buildMetricsHistory = (
       herbBiomass,
       woodyCells: woodyCells ?? grassland?.woodyCells ?? null,
       woodyBiomass,
+      animalCount,
       grassCoverage: grassland?.grassCoverage ?? null,
       woodyCoverage: grassland?.woodyCoverage ?? null,
     },
@@ -929,6 +958,33 @@ const buildMetrics = (
       'treeBiomass',
       'shrubBiomass',
     ]) ?? layerSum(snapshot?.woodyBiomass, width, height);
+  const animalCount =
+    metricValue(sourceMetrics, ['animalCount', 'animals', 'aliveAnimals', 'herbivores']) ??
+    layerSum(snapshot?.animalCount, width, height);
+  const meanAnimalEnergy = metricValue(sourceMetrics, [
+    'meanAnimalEnergy',
+    'avgAnimalEnergy',
+    'animalEnergy',
+  ]);
+  const meanAnimalThirst = metricValue(sourceMetrics, [
+    'meanAnimalThirst',
+    'avgAnimalThirst',
+    'animalThirst',
+  ]);
+  const totalGrazedBiomass = metricValue(sourceMetrics, [
+    'totalGrazedBiomass',
+    'animalGrazing',
+    'grazedBiomass',
+  ]);
+  const animalDeaths = metricValue(sourceMetrics, ['animalDeaths', 'deadAnimals']);
+  const riparianAnimalCount = metricValue(sourceMetrics, [
+    'riparianAnimalCount',
+    'nearWaterAnimals',
+  ]);
+  const shelteredAnimalCount = metricValue(sourceMetrics, [
+    'shelteredAnimalCount',
+    'shelteredAnimals',
+  ]);
   const grassland = buildGrasslandSignal(snapshot);
   const grassCoverage =
     metricValue(sourceMetrics, [
@@ -1047,6 +1103,13 @@ const buildMetrics = (
     { label: 'Riparian Grass', value: formatPercent(riparianGrassCoverage) },
     { label: 'Woody Shelter Cells', value: formatValue(woodyShelterCells ?? '-') },
     { label: 'Winter Shelter Cells', value: formatValue(winterShelterCells ?? '-') },
+    { label: 'Animals', value: formatValue(animalCount ?? '-') },
+    { label: 'Mean Animal Energy', value: formatMetricNumber(meanAnimalEnergy, 2) },
+    { label: 'Mean Animal Thirst', value: formatMetricNumber(meanAnimalThirst, 2) },
+    { label: 'Grazed Biomass', value: formatMetricNumber(totalGrazedBiomass, 3) },
+    { label: 'Animal Deaths', value: formatValue(animalDeaths ?? '-') },
+    { label: 'Riparian Animals', value: formatValue(riparianAnimalCount ?? '-') },
+    { label: 'Sheltered Animals', value: formatValue(shelteredAnimalCount ?? '-') },
     { label: 'Riparian Biomass', value: formatMetricNumber(riparianBiomass) },
     { label: 'Far Biomass', value: formatMetricNumber(farBiomass) },
     { label: 'Riparian Moisture', value: formatMetricNumber(riparianMoisture) },
@@ -1176,6 +1239,41 @@ const buildInspectorValues = (
       value: formatValue(
         firstPresent(workerCell, plantStressKeys) ??
           readCell(pickLayer(snapshot, plantStressKeys), x, y, width),
+      ),
+    },
+    {
+      label: 'Animals',
+      value: formatValue(
+        firstPresent(workerCell, animalCountKeys) ??
+          readCell(pickLayer(snapshot, animalCountKeys), x, y, width),
+      ),
+    },
+    {
+      label: 'Animal Energy',
+      value: formatValue(
+        firstPresent(workerCell, animalEnergyKeys) ??
+          readCell(pickLayer(snapshot, animalEnergyKeys), x, y, width),
+      ),
+    },
+    {
+      label: 'Animal Thirst',
+      value: formatValue(
+        firstPresent(workerCell, animalThirstKeys) ??
+          readCell(pickLayer(snapshot, animalThirstKeys), x, y, width),
+      ),
+    },
+    {
+      label: 'Grazing',
+      value: formatValue(
+        firstPresent(workerCell, animalGrazingKeys) ??
+          readCell(pickLayer(snapshot, animalGrazingKeys), x, y, width),
+      ),
+    },
+    {
+      label: 'Deaths',
+      value: formatValue(
+        firstPresent(workerCell, animalDeathsKeys) ??
+          readCell(pickLayer(snapshot, animalDeathsKeys), x, y, width),
       ),
     },
     {

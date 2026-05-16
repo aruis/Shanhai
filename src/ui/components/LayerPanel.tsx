@@ -7,6 +7,7 @@ type WorkbenchLayerState = LayerState & {
   plants?: boolean;
   flowArrows?: boolean;
   components?: boolean;
+  animals?: boolean;
 };
 
 interface LayerPanelProps {
@@ -21,6 +22,7 @@ const layerLabels: Array<[keyof WorkbenchLayerState, string]> = [
   ['moisture', 'Moisture'],
   ['nutrient', 'Nutrient'],
   ['plants', 'Plants'],
+  ['animals', 'Animals'],
   ['flow', 'Flow'],
   ['flowArrows', 'Flow arrows'],
   ['components', 'Components'],

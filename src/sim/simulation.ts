@@ -2,6 +2,7 @@ import { seasonForTick, stepHydrology } from "./hydrology";
 import { stepNutrients } from "./nutrients";
 import { stableDefaultParams } from "./params";
 import { stepPlants } from "./plants";
+import { stepAnimals } from "./animals";
 import { scenarios, ScenarioName } from "./scenarios";
 import { Metrics, Params, SimState } from "./types";
 import { collectMetrics } from "./metrics";
@@ -31,6 +32,11 @@ export interface SimSnapshot {
   plantBiomass: Float64Array;
   plantMaturity: Float64Array;
   plantStress: Float64Array;
+  animalCount: Uint16Array;
+  animalEnergy: Float64Array;
+  animalThirst: Float64Array;
+  animalGrazing: Float64Array;
+  animalDeaths: Uint16Array;
   F: Float64Array;
   hydrologySource: Float64Array;
   hydrologyInflow: Float64Array;
@@ -85,6 +91,7 @@ export function createSimulation(
         stepHydrology(state, resolvedParams);
         stepNutrients(state, resolvedParams);
         stepPlants(state, resolvedParams);
+        stepAnimals(state, resolvedParams);
       }
       return state;
     },
@@ -112,6 +119,11 @@ export function createSimulation(
         plantBiomass: state.plantBiomass,
         plantMaturity: state.plantMaturity,
         plantStress: state.plantStress,
+        animalCount: state.animalCount,
+        animalEnergy: state.animalEnergy,
+        animalThirst: state.animalThirst,
+        animalGrazing: state.animalGrazing,
+        animalDeaths: state.animalDeaths,
         F: state.flow,
         hydrologySource: state.hydrologySource,
         hydrologyInflow: state.hydrologyInflow,
@@ -159,6 +171,11 @@ export function createSimulation(
         plantBiomass: state.plantBiomass[i],
         plantMaturity: state.plantMaturity[i],
         plantStress: state.plantStress[i],
+        animalCount: state.animalCount[i],
+        animalEnergy: state.animalEnergy[i],
+        animalThirst: state.animalThirst[i],
+        animalGrazing: state.animalGrazing[i],
+        animalDeaths: state.animalDeaths[i],
         flow: state.flow[i],
         hydrologySource: state.hydrologySource[i],
         hydrologyInflow: state.hydrologyInflow[i],

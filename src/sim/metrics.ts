@@ -11,6 +11,13 @@ export function collectMetrics(state: SimState): Metrics {
   let herbBiomass = 0;
   let woodyCells = 0;
   let woodyBiomass = 0;
+  let animalCount = 0;
+  let animalEnergy = 0;
+  let animalThirst = 0;
+  let animalDeaths = 0;
+  let animalGrazing = 0;
+  let thirstyAnimals = 0;
+  let hungryAnimals = 0;
   let dryCells = 0;
   let wetCells = 0;
   let riverCells = 0;
@@ -31,6 +38,15 @@ export function collectMetrics(state: SimState): Metrics {
       woodyCells++;
       woodyBiomass += state.plantBiomass[i];
     }
+    if (state.animalCount[i] > 0) {
+      animalCount += state.animalCount[i];
+      animalEnergy += state.animalEnergy[i] * state.animalCount[i];
+      animalThirst += state.animalThirst[i] * state.animalCount[i];
+      if (state.animalThirst[i] < 0.38) thirstyAnimals += state.animalCount[i];
+      if (state.animalEnergy[i] < 0.72) hungryAnimals += state.animalCount[i];
+    }
+    animalDeaths += state.animalDeaths[i] ?? 0;
+    animalGrazing += state.animalGrazing[i] ?? 0;
     flowThrough += state.flow[i];
     if (water > maxWater) maxWater = water;
     if (state.base[i] === BaseTerrain.OCEAN) oceanCells++;
@@ -61,6 +77,16 @@ export function collectMetrics(state: SimState): Metrics {
     herbBiomass,
     woodyCells,
     woodyBiomass,
+    animalCount,
+    animalDeaths,
+    animalBirths: 0,
+    meanAnimalEnergy: regionMean(animalEnergy, animalCount),
+    meanAnimalThirst: regionMean(animalThirst, animalCount),
+    totalGrazedBiomass: animalGrazing,
+    thirstyAnimals,
+    hungryAnimals,
+    riparianAnimalCount: grassland.riparianAnimalCount,
+    shelteredAnimalCount: grassland.shelteredAnimalCount,
     herbToWoodyRatio: ratio(herbCells, woodyCells),
     meanMoisture: totalMoisture / state.moisture.length,
     meanNutrient: totalNutrient / state.nutrient.length,
@@ -114,6 +140,8 @@ interface GrasslandMetrics {
   farHerbBiomass: number;
   woodyShelterCells: number;
   winterShelterCells: number;
+  riparianAnimalCount: number;
+  shelteredAnimalCount: number;
 }
 
 function collectGrasslandMetrics(state: SimState): GrasslandMetrics {
@@ -129,6 +157,8 @@ function collectGrasslandMetrics(state: SimState): GrasslandMetrics {
   let lowHillWoodyCells = 0;
   let woodyShelterCells = 0;
   let winterShelterCells = 0;
+  let riparianAnimalCount = 0;
+  let shelteredAnimalCount = 0;
   const riparian = createRegionAccumulator();
   const far = createRegionAccumulator();
 
@@ -145,8 +175,13 @@ function collectGrasslandMetrics(state: SimState): GrasslandMetrics {
     if (isWinterShelterCell(state, i)) winterShelterCells++;
 
     const distance = distanceToNearestCell(state, i, waterCells);
-    if (distance === 1) addRegionCell(riparian, state, i);
-    else if (distance >= 6) addRegionCell(far, state, i);
+    if (distance === 1) {
+      addRegionCell(riparian, state, i);
+      riparianAnimalCount += state.animalCount[i];
+    } else if (distance >= 6) {
+      addRegionCell(far, state, i);
+    }
+    if (isWinterShelterCell(state, i)) shelteredAnimalCount += state.animalCount[i];
   }
 
   return {
@@ -164,6 +199,8 @@ function collectGrasslandMetrics(state: SimState): GrasslandMetrics {
     farHerbBiomass: regionMean(far.herbBiomass, far.count),
     woodyShelterCells,
     winterShelterCells,
+    riparianAnimalCount,
+    shelteredAnimalCount,
   };
 }
 

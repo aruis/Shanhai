@@ -53,6 +53,12 @@ export interface SimState {
   plantBiomass: Float64Array;
   plantMaturity: Float64Array;
   plantStress: Float64Array;
+  animals: Animal[];
+  animalCount: Uint16Array;
+  animalEnergy: Float64Array;
+  animalThirst: Float64Array;
+  animalGrazing: Float64Array;
+  animalDeaths: Uint16Array;
   flow: Float64Array;
   hydrologySource: Float64Array;
   hydrologyInflow: Float64Array;
@@ -71,6 +77,15 @@ export interface SimState {
   lakeDryTicks: Uint16Array;
   springs: Spring[];
   lastStats: HydrologyStats;
+}
+
+export interface Animal {
+  id: number;
+  index: number;
+  energy: number;
+  thirst: number;
+  age: number;
+  alive: boolean;
 }
 
 export interface Params {
@@ -135,6 +150,25 @@ export interface Params {
   woodyDeathNutrientRatio: number;
   woodyHerbCompetitionBiomass: number;
   woodyHerbReplacementBiomass: number;
+  initialAnimalCount: number;
+  animalCellCapacity: number;
+  animalMoveCost: number;
+  animalUphillPenalty: number;
+  animalEnergyMax: number;
+  animalThirstMax: number;
+  animalBaseMetabolism: number;
+  animalWinterEnergyCost: number;
+  animalWoodyShelterCostMultiplier: number;
+  animalThirstDecay: number;
+  animalThirstCritical: number;
+  animalHungerThreshold: number;
+  animalMoistureWeight: number;
+  animalAdjacentWaterBonus: number;
+  animalDownhillBonus: number;
+  animalVegetationSignal: number;
+  animalHerbEnergyFactor: number;
+  animalGrazeRate: number;
+  animalBodyNutrientReturn: number;
 }
 
 export interface Metrics {
@@ -147,6 +181,16 @@ export interface Metrics {
   herbBiomass: number;
   woodyCells: number;
   woodyBiomass: number;
+  animalCount: number;
+  animalDeaths: number;
+  animalBirths: number;
+  meanAnimalEnergy: number;
+  meanAnimalThirst: number;
+  totalGrazedBiomass: number;
+  thirstyAnimals: number;
+  hungryAnimals: number;
+  riparianAnimalCount: number;
+  shelteredAnimalCount: number;
   herbToWoodyRatio: number;
   grassCoverage: number;
   woodyCoverage: number;

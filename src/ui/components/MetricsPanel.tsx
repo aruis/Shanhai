@@ -18,6 +18,7 @@ interface MetricHistoryPoint {
   woodyCells?: number | null;
   woodyBiomass?: number | null;
   woodyCoverage?: number | null;
+  animalCount?: number | null;
 }
 
 interface MetricsPanelProps {
@@ -31,6 +32,7 @@ const seriesConfig = [
   { key: 'avgNutrient', label: 'Mean nutrient', color: '#dcb455' },
   { key: 'grassCoverage', label: 'Grass coverage', color: '#72d86b' },
   { key: 'woodyCoverage', label: 'Woody coverage', color: '#b8964f' },
+  { key: 'animalCount', label: 'Animals', color: '#f2c75c' },
 ] satisfies Array<{
   key: keyof MetricHistoryPoint;
   label: string;

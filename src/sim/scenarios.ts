@@ -41,6 +41,12 @@ function makeState(name: string, seed: number): SimState {
     plantBiomass: new Float64Array(size),
     plantMaturity: new Float64Array(size),
     plantStress: new Float64Array(size),
+    animals: [],
+    animalCount: new Uint16Array(size),
+    animalEnergy: new Float64Array(size),
+    animalThirst: new Float64Array(size),
+    animalGrazing: new Float64Array(size),
+    animalDeaths: new Uint16Array(size),
     flow: new Float64Array(size),
     hydrologySource: new Float64Array(size),
     hydrologyInflow: new Float64Array(size),
@@ -273,6 +279,16 @@ export function foothillShelter(seed = 505): SimState {
     },
     { density: 0.12, biomass: 0.28, maturity: 0.24 },
   );
+  seedInitialAnimals(
+    state,
+    (x, y) =>
+      x >= 21 &&
+      x < 56 &&
+      y >= 10 &&
+      y <= 54 &&
+      Math.abs(y - foothillShelterRiverY(x)) <= 13,
+    170,
+  );
 
   return finalizeOceanSurface(state);
 }
@@ -346,6 +362,70 @@ function seedInitialWoodies(
       state.plantMaturity[i] = maturity;
       state.plantStress[i] = 0;
     }
+  }
+}
+
+function seedInitialAnimals(
+  state: SimState,
+  inSeedZone: (x: number, y: number) => boolean,
+  targetCount: number,
+): void {
+  const candidates: Array<{ index: number; score: number }> = [];
+  for (let y = 0; y < state.height; y++) {
+    for (let x = 0; x < state.width; x++) {
+      const index = idx(x, y, state.width);
+      if (!inSeedZone(x, y) || !isAnimalHabitat(state, index)) continue;
+      const herbSignal = state.plantType[index] === PlantType.HERB ? state.plantBiomass[index] : 0;
+      const score = hashUnit(state.seed ^ 0xa511e9b3, index) - herbSignal * 0.08 - state.moisture[index] * 0.04;
+      candidates.push({ index, score });
+    }
+  }
+
+  candidates.sort((a, b) => a.score - b.score || a.index - b.index);
+  const count = Math.min(targetCount, candidates.length);
+  state.animals = [];
+  for (let id = 0; id < count; id++) {
+    const index = candidates[id].index;
+    state.animals.push({
+      id,
+      index,
+      energy: 1.05 + hashUnit(state.seed ^ 0x7f4a7c15, index) * 0.18,
+      thirst: 0.78 + hashUnit(state.seed ^ 0x3c6ef372, index) * 0.16,
+      age: Math.floor(hashUnit(state.seed ^ 0x51ed270b, index) * 120),
+      alive: true,
+    });
+  }
+  rebuildAnimalLayers(state);
+}
+
+function isAnimalHabitat(state: SimState, index: number): boolean {
+  return (
+    (state.base[index] === BaseTerrain.PLAIN || state.base[index] === BaseTerrain.LOW_HILL) &&
+    state.surface[index] !== Surface.RIVER &&
+    state.surface[index] !== Surface.LAKE &&
+    state.surface[index] !== Surface.ICE
+  );
+}
+
+function rebuildAnimalLayers(state: SimState): void {
+  state.animalCount.fill(0);
+  state.animalEnergy.fill(0);
+  state.animalThirst.fill(0);
+  state.animalGrazing.fill(0);
+  state.animalDeaths.fill(0);
+
+  for (const animal of state.animals) {
+    if (!animal.alive) continue;
+    state.animalCount[animal.index]++;
+    state.animalEnergy[animal.index] += animal.energy;
+    state.animalThirst[animal.index] += animal.thirst;
+  }
+
+  for (let i = 0; i < state.animalCount.length; i++) {
+    const count = state.animalCount[i];
+    if (count === 0) continue;
+    state.animalEnergy[i] /= count;
+    state.animalThirst[i] /= count;
   }
 }
 

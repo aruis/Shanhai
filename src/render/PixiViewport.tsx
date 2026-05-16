@@ -1,6 +1,8 @@
 import { useEffect, useMemo, useRef, type CSSProperties } from 'react';
 import { Application, Graphics } from 'pixi.js';
 import {
+  animalAlpha,
+  animalColor,
   componentColor,
   flowAlpha,
   flowArrowColor,
@@ -43,6 +45,11 @@ export interface EcoSnapshot {
   woodyBiomass?: MatrixLayer;
   plantMaturity?: MatrixLayer;
   plantStress?: MatrixLayer;
+  animalCount?: MatrixLayer;
+  animalEnergy?: MatrixLayer;
+  animalThirst?: MatrixLayer;
+  animalGrazing?: MatrixLayer;
+  animalDeaths?: MatrixLayer;
   flowMemory?: MatrixLayer;
   flowDirection?: MatrixLayer;
   dominantFlowDirection?: MatrixLayer;
@@ -62,6 +69,7 @@ export interface LayerState {
   moisture: boolean;
   nutrient: boolean;
   plants: boolean;
+  animals: boolean;
   flowArrows: boolean;
   components: boolean;
 }
@@ -352,6 +360,13 @@ export function PixiViewport({
       'shrubs',
       'shrub',
     ]);
+    const animalCountLayer = pickSnapshotLayer(currentSnapshot, [
+      'animalCount',
+      'animal_count',
+      'animals',
+      'animalDensity',
+      'animal_density',
+    ]);
 
     for (let y = 0; y < height; y += 1) {
       for (let x = 0; x < width; x += 1) {
@@ -463,6 +478,22 @@ export function PixiViewport({
                 Math.max(1, cellSize - inset * 2),
               )
               .fill({ color, alpha: flowAlpha(flow) });
+          }
+        }
+
+        if (currentLayers.animals) {
+          const animals = readCell(animalCountLayer, x, y, width);
+          const color = animalColor(animals);
+          if (color !== null) {
+            const inset = Math.max(1, Math.floor(cellSize * 0.36));
+            grid
+              .rect(
+                px + inset,
+                py + inset,
+                Math.max(1, cellSize - inset * 2),
+                Math.max(1, cellSize - inset * 2),
+              )
+              .fill({ color, alpha: animalAlpha(animals) });
           }
         }
 
