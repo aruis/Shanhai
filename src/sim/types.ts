@@ -69,6 +69,9 @@ export interface SimState {
   animalThirst: Float64Array;
   animalGrazing: Float64Array;
   animalDeaths: Uint16Array;
+  animalDeathWoodyDistance: Float64Array;
+  animalDeathSheltered: Uint16Array;
+  animalDeathOpenPlain: Uint16Array;
   animalBirths: Uint16Array;
   animalIntentType: Uint8Array;
   animalIntentDirection: Int8Array;
@@ -217,6 +220,10 @@ export interface Metrics {
   woodyBiomass: number;
   animalCount: number;
   animalDeaths: number;
+  meanDeathToWoodyDistance: number;
+  meanSurvivorToWoodyDistance: number;
+  shelteredDeathCount: number;
+  openPlainDeathCount: number;
   animalBirths: number;
   juvenileAnimalCount: number;
   adultAnimalCount: number;

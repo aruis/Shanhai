@@ -62,6 +62,9 @@ describe("M4.1 animal survival validation", () => {
       expect(sim.state.animalThirst[i]).toBeGreaterThanOrEqual(0);
       expect(sim.state.animalGrazing[i]).toBeGreaterThanOrEqual(0);
       expect(sim.state.animalDeaths[i]).toBeGreaterThanOrEqual(0);
+      expect(sim.state.animalDeathWoodyDistance[i]).toBeGreaterThanOrEqual(0);
+      expect(sim.state.animalDeathSheltered[i]).toBeGreaterThanOrEqual(0);
+      expect(sim.state.animalDeathOpenPlain[i]).toBeGreaterThanOrEqual(0);
     }
   });
 
@@ -405,6 +408,78 @@ describe("M5.4 plain-pocket population validation", () => {
   });
 });
 
+describe("M5.5 winter shelter survival diagnostics", () => {
+  it("records death and survivor distance to woody shelter deterministically", () => {
+    const params = {
+      ...stableDefaultParams,
+      animalReproductionRate: 0,
+    };
+    const a = createSimulation(FOOTHILL_SHELTER, params);
+    const b = createSimulation(FOOTHILL_SHELTER, params);
+    seedShelterDiagnosticAnimals(a);
+    seedShelterDiagnosticAnimals(b);
+
+    a.step();
+    b.step();
+    const metrics = a.metrics();
+
+    expect(metrics.animalDeaths).toBe(2);
+    expect(metrics.animalCount).toBe(1);
+    expect(metrics.shelteredDeathCount).toBe(1);
+    expect(metrics.openPlainDeathCount).toBe(1);
+    expect(metrics.meanDeathToWoodyDistance).toBeGreaterThan(metrics.meanSurvivorToWoodyDistance);
+    expect(sum(a.state.animalDeaths)).toBe(metrics.animalDeaths);
+    expect(sum(a.state.animalDeathSheltered)).toBe(metrics.shelteredDeathCount);
+    expect(sum(a.state.animalDeathOpenPlain)).toBe(metrics.openPlainDeathCount);
+    expect(sum(a.state.animalDeathWoodyDistance)).toBeCloseTo(
+      metrics.meanDeathToWoodyDistance * metrics.animalDeaths,
+      8,
+    );
+    expect(Array.from(a.state.animalDeathWoodyDistance)).toEqual(Array.from(b.state.animalDeathWoodyDistance));
+    expect(Array.from(a.state.animalDeathSheltered)).toEqual(Array.from(b.state.animalDeathSheltered));
+    expect(Array.from(a.state.animalDeathOpenPlain)).toEqual(Array.from(b.state.animalDeathOpenPlain));
+    expect(a.state.animals).toEqual(b.state.animals);
+  });
+});
+
+function seedShelterDiagnosticAnimals(sim: ReturnType<typeof createSimulation>): void {
+  const sheltered = findWoodyShelterIndex(sim);
+  const openPlain = findOpenPlainAwayFromWoodies(sim, 6);
+
+  sim.state.animals = [
+    {
+      id: 0,
+      index: sheltered,
+      sex: 0,
+      energy: 0.0001,
+      thirst: stableDefaultParams.animalThirstMax,
+      age: 200,
+      reproduceCooldown: 999,
+      alive: true,
+    },
+    {
+      id: 1,
+      index: openPlain,
+      sex: 1,
+      energy: 0.0001,
+      thirst: stableDefaultParams.animalThirstMax,
+      age: 200,
+      reproduceCooldown: 999,
+      alive: true,
+    },
+    {
+      id: 2,
+      index: sheltered,
+      sex: 1,
+      energy: stableDefaultParams.animalEnergyMax,
+      thirst: stableDefaultParams.animalThirstMax,
+      age: 200,
+      reproduceCooldown: 999,
+      alive: true,
+    },
+  ];
+}
+
 function prepareBreedingAdults(animals: Array<{ age: number; energy: number; thirst: number; reproduceCooldown: number }>): void {
   for (const animal of animals) {
     animal.age = 240;
@@ -498,6 +573,43 @@ function collectWinterSamples(
     }
   }
   return samples;
+}
+
+function findWoodyShelterIndex(sim: ReturnType<typeof createSimulation>): number {
+  for (let i = 0; i < sim.state.plantType.length; i++) {
+    if (
+      sim.state.base[i] === BaseTerrain.LOW_HILL &&
+      sim.state.surface[i] !== Surface.RIVER &&
+      sim.state.surface[i] !== Surface.LAKE &&
+      sim.state.plantType[i] === PlantType.WOODY &&
+      sim.state.plantBiomass[i] >= 0.18
+    ) {
+      return i;
+    }
+  }
+  throw new Error("Expected foothill shelter scenario to contain woody shelter");
+}
+
+function findOpenPlainAwayFromWoodies(sim: ReturnType<typeof createSimulation>, minDistance: number): number {
+  for (let i = 0; i < sim.state.base.length; i++) {
+    if (sim.state.base[i] !== BaseTerrain.PLAIN) continue;
+    if (sim.state.surface[i] === Surface.RIVER || sim.state.surface[i] === Surface.LAKE) continue;
+    if (distanceToNearestWoody(sim, i) >= minDistance) return i;
+  }
+  throw new Error("Expected foothill shelter scenario to contain open plain away from woody shelter");
+}
+
+function distanceToNearestWoody(sim: ReturnType<typeof createSimulation>, index: number): number {
+  const x = index % sim.state.width;
+  const y = Math.floor(index / sim.state.width);
+  let nearest = Number.POSITIVE_INFINITY;
+  for (let i = 0; i < sim.state.plantType.length; i++) {
+    if (sim.state.plantType[i] !== PlantType.WOODY || sim.state.plantBiomass[i] < 0.18) continue;
+    const wx = i % sim.state.width;
+    const wy = Math.floor(i / sim.state.width);
+    nearest = Math.min(nearest, Math.max(Math.abs(x - wx), Math.abs(y - wy)));
+  }
+  return nearest;
 }
 
 function sum(values: ArrayLike<number>): number {

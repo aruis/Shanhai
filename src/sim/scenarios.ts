@@ -47,6 +47,9 @@ function makeState(name: string, seed: number): SimState {
     animalThirst: new Float64Array(size),
     animalGrazing: new Float64Array(size),
     animalDeaths: new Uint16Array(size),
+    animalDeathWoodyDistance: new Float64Array(size),
+    animalDeathSheltered: new Uint16Array(size),
+    animalDeathOpenPlain: new Uint16Array(size),
     animalBirths: new Uint16Array(size),
     animalIntentType: new Uint8Array(size),
     animalIntentDirection: new Int8Array(size).fill(-1),
@@ -483,6 +486,9 @@ function rebuildAnimalLayers(state: SimState): void {
   state.animalThirst.fill(0);
   state.animalGrazing.fill(0);
   state.animalDeaths.fill(0);
+  state.animalDeathWoodyDistance.fill(0);
+  state.animalDeathSheltered.fill(0);
+  state.animalDeathOpenPlain.fill(0);
   state.animalBirths.fill(0);
   state.animalIntentType.fill(0);
   state.animalIntentDirection.fill(-1);

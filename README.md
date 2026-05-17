@@ -15,15 +15,16 @@ The current prototype focuses on the hydrology-to-vegetation-to-herbivore ecolog
 - slow-growing woody plants and winter shelter
 - local herbivore movement, grazing, reproduction, and seasonal population cycles
 - terrain-split animal pocket diagnostics
+- winter shelter survival diagnostics
 - fixed validation scenarios
 - PixiJS grid visualization
 - Web Worker simulation loop
 
 ## Current Milestone
 
-### M5.4: Plain Pocket Population Curves
+### M5.5: Winter Shelter Survival Diagnostics
 
-M2 hydrology-to-grass behavior is implemented and protected by validation coverage. M3 added woody plants and a stable foothill shelter scenario. M4 made one local-vision herbivore population observable and diagnosable. M5.4 adds terrain-split plain pocket diagnostics:
+M2 hydrology-to-grass behavior is implemented and protected by validation coverage. M3 added woody plants and a stable foothill shelter scenario. M4 made one local-vision herbivore population observable and diagnosable. M5.5 adds winter shelter survival diagnostics:
 
 - per-cell hydrology budget inspection
 - flow direction arrows
@@ -44,6 +45,7 @@ M2 hydrology-to-grass behavior is implemented and protected by validation covera
 - M5.2 autumn forage/storage behavior, autumn/winter reserve capacity, juvenile/adult/reproductive animal metrics, and animal energy/reproductive trend lines for seasonal diagnosis
 - M5.3 soil-moisture drinking, lower foothill animal seed pressure, low-hill shelter seeking bias, far/open-plain animal metrics, longer 720-tick metric chart window, and multi-year cycle validation tests
 - M5.4 mountain-split plain pocket scenario, animal habitat connected-component metrics, largest/second/third pocket population diagnostics, pocket trend lines, and deterministic seasonal pocket-series tests
+- M5.5 per-cell death-to-woody-shelter distance, sheltered/open-plain death counters, survivor-to-woody distance metrics, inspector output, and deterministic survival-diagnostics tests
 
 ## Roadmap
 
@@ -51,7 +53,7 @@ M2 hydrology-to-grass behavior is implemented and protected by validation covera
 - **M2 Moisture, Nutrients, and Herbaceous Plants:** add soil moisture, nutrients, river-valley enrichment, grass growth, seeding, winter die-off, and nutrient return. Validation coverage is in place.
 - **M3 Woody Plants and Terrain Zoning:** add slow-growing woody plants, low-hill forest bands, plant competition, and stable foothill shelter signals for future animals. M3.2 is complete.
 - **M4 Animal Survival:** add local herbivore movement, thirst, hunger, grazing, death, nutrient return, and behavior debugging. M4.3 is complete enough for the current workbench.
-- **M5 Reproduction and Seasonal Population Cycles:** add age, sex, reproduction cooldown, autumn energy storage, winter shelter, and population oscillation metrics. M5.4 validates mountain-split plain pockets and per-pocket animal curves; winter survivor distance diagnostics remain pending.
+- **M5 Reproduction and Seasonal Population Cycles:** add age, sex, reproduction cooldown, autumn energy storage, winter shelter, and population oscillation metrics. M5.5 validates mountain-split plain pockets, per-pocket animal curves, and winter shelter survival diagnostics.
 
 ## Validation Scenarios
 
@@ -62,7 +64,7 @@ The first milestone uses fixed `64x64` scenarios:
 - `basinSpill`: a basin should fill, spill through a low outlet, and form downstream flow.
 - `riverValleyGrassland`: a stable river should cross plantable grassland, with higher riparian moisture, nutrients, and herb biomass than distant plantable land.
 - M3.1 woody checks reuse `riverValleyGrassland` to validate deterministic woody state, exclusion from water/ocean/mid/high mountains, and stronger low-hill/foothill woody signal than distant plains.
-- `foothillShelter`: a foothill meadow and low-hill woodland scenario for M3.2-M5.3, validating deterministic setup, multi-year woody persistence, bounded low-hill woody coverage, persistent riparian grass, shelter metrics, deterministic local herbivore survival, behavior explanation layers, movement diagnostics, limited reproduction, autumn storage diagnostics, and multi-year population-cycle signals.
+- `foothillShelter`: a foothill meadow and low-hill woodland scenario for M3.2-M5.5, validating deterministic setup, multi-year woody persistence, bounded low-hill woody coverage, persistent riparian grass, shelter metrics, deterministic local herbivore survival, behavior explanation layers, movement diagnostics, limited reproduction, autumn storage diagnostics, multi-year population-cycle signals, and winter shelter survival diagnostics.
 - `splitPlainPockets`: a mountain-divided plain scenario for M5.4, validating that animal habitat pockets are counted independently and that the leading pocket populations remain deterministic across seasonal windows.
 
 ## Tech Stack

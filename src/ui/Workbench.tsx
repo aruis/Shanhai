@@ -436,6 +436,21 @@ const animalEnergyKeys = ['animalEnergy', 'animal_energy'];
 const animalThirstKeys = ['animalThirst', 'animal_thirst'];
 const animalGrazingKeys = ['animalGrazing', 'animal_grazing', 'grazing'];
 const animalDeathsKeys = ['animalDeaths', 'animal_deaths', 'deaths'];
+const animalDeathWoodyDistanceKeys = [
+  'animalDeathWoodyDistance',
+  'animal_death_woody_distance',
+  'deathWoodyDistance',
+];
+const animalDeathShelteredKeys = [
+  'animalDeathSheltered',
+  'animal_death_sheltered',
+  'shelteredDeaths',
+];
+const animalDeathOpenPlainKeys = [
+  'animalDeathOpenPlain',
+  'animal_death_open_plain',
+  'openPlainDeaths',
+];
 const animalBirthsKeys = ['animalBirths', 'animal_births', 'births'];
 const animalIntentTypeKeys = [
   'animalIntentType',
@@ -489,6 +504,15 @@ const adaptSnapshot = (snapshot: EcoSnapshot | null): EcoSnapshot | null => {
     animalGrazing:
       snapshot.animalGrazing ?? pickLayer(snapshot, animalGrazingKeys),
     animalDeaths: snapshot.animalDeaths ?? pickLayer(snapshot, animalDeathsKeys),
+    animalDeathWoodyDistance:
+      snapshot.animalDeathWoodyDistance ??
+      pickLayer(snapshot, animalDeathWoodyDistanceKeys),
+    animalDeathSheltered:
+      snapshot.animalDeathSheltered ??
+      pickLayer(snapshot, animalDeathShelteredKeys),
+    animalDeathOpenPlain:
+      snapshot.animalDeathOpenPlain ??
+      pickLayer(snapshot, animalDeathOpenPlainKeys),
     animalBirths: snapshot.animalBirths ?? pickLayer(snapshot, animalBirthsKeys),
     animalIntentType:
       snapshot.animalIntentType ?? pickLayer(snapshot, animalIntentTypeKeys),
@@ -869,6 +893,14 @@ const buildMetricsHistory = (
     meanAnimalEnergy: historyValue(item, ['meanAnimalEnergy', 'avgAnimalEnergy', 'animalEnergy']),
     animalBirths: historyValue(item, ['animalBirths', 'births']),
     animalDeaths: historyValue(item, ['animalDeaths', 'deadAnimals']),
+    meanDeathToWoodyDistance: historyValue(item, [
+      'meanDeathToWoodyDistance',
+      'deathWoodyDistance',
+    ]),
+    meanSurvivorToWoodyDistance: historyValue(item, [
+      'meanSurvivorToWoodyDistance',
+      'survivorWoodyDistance',
+    ]),
     juvenileAnimalCount: historyValue(item, ['juvenileAnimalCount', 'juvenileAnimals']),
     reproductiveAnimalCount: historyValue(item, [
       'reproductiveAnimalCount',
@@ -1043,6 +1075,22 @@ const buildMetrics = (
     'grazedBiomass',
   ]);
   const animalDeaths = metricValue(sourceMetrics, ['animalDeaths', 'deadAnimals']);
+  const meanDeathToWoodyDistance = metricValue(sourceMetrics, [
+    'meanDeathToWoodyDistance',
+    'deathWoodyDistance',
+  ]);
+  const meanSurvivorToWoodyDistance = metricValue(sourceMetrics, [
+    'meanSurvivorToWoodyDistance',
+    'survivorWoodyDistance',
+  ]);
+  const shelteredDeathCount = metricValue(sourceMetrics, [
+    'shelteredDeathCount',
+    'shelteredDeaths',
+  ]);
+  const openPlainDeathCount = metricValue(sourceMetrics, [
+    'openPlainDeathCount',
+    'openPlainDeaths',
+  ]);
   const animalBirths = metricValue(sourceMetrics, ['animalBirths', 'births']);
   const juvenileAnimalCount = metricValue(sourceMetrics, ['juvenileAnimalCount', 'juvenileAnimals']);
   const adultAnimalCount = metricValue(sourceMetrics, ['adultAnimalCount', 'adultAnimals']);
@@ -1201,6 +1249,9 @@ const buildMetrics = (
     { label: 'Second Pocket', value: formatValue(secondAnimalPocketPopulation ?? '-') },
     { label: 'Animals', value: formatValue(animalCount ?? '-') },
     { label: 'Animal Births', value: formatValue(animalBirths ?? '-') },
+    { label: 'Animal Deaths', value: formatValue(animalDeaths ?? '-') },
+    { label: 'Death-Woody Dist', value: formatMetricNumber(meanDeathToWoodyDistance, 2) },
+    { label: 'Survivor-Woody Dist', value: formatMetricNumber(meanSurvivorToWoodyDistance, 2) },
     { label: 'Mean Water', value: water === null ? '-' : water.toFixed(3) },
     {
       label: 'Mean Moisture',
@@ -1233,7 +1284,8 @@ const buildMetrics = (
     { label: 'Mean Animal Energy', value: formatMetricNumber(meanAnimalEnergy, 2) },
     { label: 'Mean Animal Thirst', value: formatMetricNumber(meanAnimalThirst, 2) },
     { label: 'Grazed Biomass', value: formatMetricNumber(totalGrazedBiomass, 3) },
-    { label: 'Animal Deaths', value: formatValue(animalDeaths ?? '-') },
+    { label: 'Sheltered Deaths', value: formatValue(shelteredDeathCount ?? '-') },
+    { label: 'Open Plain Deaths', value: formatValue(openPlainDeathCount ?? '-') },
     { label: 'Juvenile Animals', value: formatValue(juvenileAnimalCount ?? '-') },
     { label: 'Adult Animals', value: formatValue(adultAnimalCount ?? '-') },
     { label: 'Reproductive Animals', value: formatValue(reproductiveAnimalCount ?? '-') },
@@ -1416,6 +1468,27 @@ const buildInspectorValues = (
       value: formatValue(
         firstPresent(workerCell, animalDeathsKeys) ??
           readCell(pickLayer(snapshot, animalDeathsKeys), x, y, width),
+      ),
+    },
+    {
+      label: 'Death-Woody Dist',
+      value: formatValue(
+        firstPresent(workerCell, animalDeathWoodyDistanceKeys) ??
+          readCell(pickLayer(snapshot, animalDeathWoodyDistanceKeys), x, y, width),
+      ),
+    },
+    {
+      label: 'Sheltered Death',
+      value: formatValue(
+        firstPresent(workerCell, animalDeathShelteredKeys) ??
+          readCell(pickLayer(snapshot, animalDeathShelteredKeys), x, y, width),
+      ),
+    },
+    {
+      label: 'Open Plain Death',
+      value: formatValue(
+        firstPresent(workerCell, animalDeathOpenPlainKeys) ??
+          readCell(pickLayer(snapshot, animalDeathOpenPlainKeys), x, y, width),
       ),
     },
     {

@@ -6,6 +6,7 @@ export function collectMetrics(state: SimState, params = stableDefaultParams): M
   const components = updateHydrologyComponents(state);
   const grassland = collectGrasslandMetrics(state);
   const animalPockets = collectAnimalPocketMetrics(state);
+  const woodyShelterCells = collectWoodyShelterCells(state);
   let totalWater = 0;
   let totalMoisture = 0;
   let totalNutrient = 0;
@@ -17,6 +18,9 @@ export function collectMetrics(state: SimState, params = stableDefaultParams): M
   let animalEnergy = 0;
   let animalThirst = 0;
   let animalDeaths = 0;
+  let animalDeathWoodyDistance = 0;
+  let shelteredDeathCount = 0;
+  let openPlainDeathCount = 0;
   let animalBirths = 0;
   let animalGrazing = 0;
   let juvenileAnimalCount = 0;
@@ -63,6 +67,9 @@ export function collectMetrics(state: SimState, params = stableDefaultParams): M
       if (state.animalEnergy[i] < 0.72) hungryAnimals += state.animalCount[i];
     }
     animalDeaths += state.animalDeaths[i] ?? 0;
+    animalDeathWoodyDistance += state.animalDeathWoodyDistance[i] ?? 0;
+    shelteredDeathCount += state.animalDeathSheltered[i] ?? 0;
+    openPlainDeathCount += state.animalDeathOpenPlain[i] ?? 0;
     animalBirths += state.animalBirths[i] ?? 0;
     animalGrazing += state.animalGrazing[i] ?? 0;
     animalMoveSuccesses += state.animalMoveSuccess[i] ?? 0;
@@ -136,6 +143,10 @@ export function collectMetrics(state: SimState, params = stableDefaultParams): M
     woodyBiomass,
     animalCount,
     animalDeaths,
+    meanDeathToWoodyDistance: regionMean(animalDeathWoodyDistance, animalDeaths),
+    meanSurvivorToWoodyDistance: meanSurvivorToWoodyDistance(state, woodyShelterCells),
+    shelteredDeathCount,
+    openPlainDeathCount,
     animalBirths,
     juvenileAnimalCount,
     adultAnimalCount,
@@ -389,6 +400,28 @@ function isWinterShelterCell(state: SimState, index: number): boolean {
   if (!isPlantableLand(state, index)) return false;
   if (state.moisture[index] < 0.025 || state.nutrient[index] < 0.05) return false;
   return hasNeighboringWoodyShelter(state, index);
+}
+
+function meanSurvivorToWoodyDistance(state: SimState, woodyShelterCells: number[]): number {
+  if (woodyShelterCells.length === 0) return 0;
+  let total = 0;
+  let count = 0;
+
+  for (const animal of state.animals) {
+    if (!animal.alive) continue;
+    total += distanceToNearestCell(state, animal.index, woodyShelterCells);
+    count++;
+  }
+
+  return regionMean(total, count);
+}
+
+function collectWoodyShelterCells(state: SimState): number[] {
+  const cells: number[] = [];
+  for (let i = 0; i < state.plantType.length; i++) {
+    if (isWoodyShelterCell(state, i)) cells.push(i);
+  }
+  return cells;
 }
 
 function hasNeighboringWoodyShelter(state: SimState, index: number): boolean {

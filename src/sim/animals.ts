@@ -15,6 +15,9 @@ export function stepAnimals(state: SimState, params: Params): SimState {
   const season = seasonForTick(state.tick);
   const deathReturns = new Float64Array(state.nutrient.length);
   const deaths = new Uint16Array(state.nutrient.length);
+  const deathWoodyDistance = new Float64Array(state.nutrient.length);
+  const deathSheltered = new Uint16Array(state.nutrient.length);
+  const deathOpenPlain = new Uint16Array(state.nutrient.length);
   const births = new Uint16Array(state.nutrient.length);
   const grazing = new Float64Array(state.nutrient.length);
   const intentType = new Uint8Array(state.nutrient.length);
@@ -47,7 +50,7 @@ export function stepAnimals(state: SimState, params: Params): SimState {
     }
 
     if (animal.energy <= 0 || animal.thirst <= 0 || !isAnimalHabitat(state, animal.index)) {
-      killAnimal(animal, animal.index, params, deathReturns, deaths);
+      killAnimal(state, animal, animal.index, params, deathReturns, deaths, deathWoodyDistance, deathSheltered, deathOpenPlain);
       continue;
     }
 
@@ -66,12 +69,25 @@ export function stepAnimals(state: SimState, params: Params): SimState {
     blockedIllegal,
     blockedEnergy,
   );
-  settleDrinkAndGraze(state, params, season, deathReturns, deaths, grazing);
+  settleDrinkAndGraze(
+    state,
+    params,
+    season,
+    deathReturns,
+    deaths,
+    deathWoodyDistance,
+    deathSheltered,
+    deathOpenPlain,
+    grazing,
+  );
   settleReproduction(state, params, season, births);
   commitDeathReturns(state, params, deathReturns);
   rebuildAnimalLayers(
     state,
     deaths,
+    deathWoodyDistance,
+    deathSheltered,
+    deathOpenPlain,
     births,
     grazing,
     intentType,
@@ -247,6 +263,9 @@ function settleDrinkAndGraze(
   season: ReturnType<typeof seasonForTick>,
   deathReturns: Float64Array,
   deaths: Uint16Array,
+  deathWoodyDistance: Float64Array,
+  deathSheltered: Uint16Array,
+  deathOpenPlain: Uint16Array,
   grazing: Float64Array,
 ): void {
   const eatersByCell = new Map<number, Animal[]>();
@@ -301,7 +320,7 @@ function settleDrinkAndGraze(
   for (const animal of state.animals) {
     if (!animal.alive) continue;
     if (animal.energy <= 0 || animal.thirst <= 0 || !isAnimalHabitat(state, animal.index)) {
-      killAnimal(animal, animal.index, params, deathReturns, deaths);
+      killAnimal(state, animal, animal.index, params, deathReturns, deaths, deathWoodyDistance, deathSheltered, deathOpenPlain);
     }
   }
 }
@@ -406,16 +425,23 @@ function areNeighbors(state: SimState, a: number, b: number): boolean {
 }
 
 function killAnimal(
+  state: SimState,
   animal: Animal,
   index: number,
   params: Params,
   deathReturns: Float64Array,
   deaths: Uint16Array,
+  deathWoodyDistance: Float64Array,
+  deathSheltered: Uint16Array,
+  deathOpenPlain: Uint16Array,
 ): void {
   if (!animal.alive) return;
   animal.alive = false;
   deathReturns[index] += params.animalBodyNutrientReturn;
   deaths[index]++;
+  deathWoodyDistance[index] += distanceToNearestWoodyShelter(state, index);
+  if (isWinterShelterCell(state, index)) deathSheltered[index]++;
+  if (isOpenPlainCell(state, index)) deathOpenPlain[index]++;
 }
 
 function commitDeathReturns(state: SimState, params: Params, deathReturns: Float64Array): void {
@@ -428,6 +454,9 @@ function commitDeathReturns(state: SimState, params: Params, deathReturns: Float
 function rebuildAnimalLayers(
   state: SimState,
   deaths: Uint16Array = new Uint16Array(state.animalCount.length),
+  deathWoodyDistance: Float64Array = new Float64Array(state.animalCount.length),
+  deathSheltered: Uint16Array = new Uint16Array(state.animalCount.length),
+  deathOpenPlain: Uint16Array = new Uint16Array(state.animalCount.length),
   births: Uint16Array = new Uint16Array(state.animalCount.length),
   grazing: Float64Array = new Float64Array(state.animalCount.length),
   intentType: Uint8Array = new Uint8Array(state.animalCount.length),
@@ -443,6 +472,9 @@ function rebuildAnimalLayers(
   state.animalThirst.fill(0);
   state.animalGrazing = grazing;
   state.animalDeaths = deaths;
+  state.animalDeathWoodyDistance = deathWoodyDistance;
+  state.animalDeathSheltered = deathSheltered;
+  state.animalDeathOpenPlain = deathOpenPlain;
   state.animalBirths = births;
   state.animalIntentType = intentType;
   state.animalIntentDirection = intentDirection;
@@ -517,7 +549,14 @@ function hasAdjacentWater(state: SimState, index: number): boolean {
 }
 
 function isWoodyShelter(state: SimState, index: number): boolean {
-  return state.plantType[index] === PlantType.WOODY && state.plantBiomass[index] >= 0.18;
+  return (
+    state.base[index] === BaseTerrain.LOW_HILL &&
+    state.surface[index] !== Surface.RIVER &&
+    state.surface[index] !== Surface.LAKE &&
+    state.surface[index] !== Surface.ICE &&
+    state.plantType[index] === PlantType.WOODY &&
+    state.plantBiomass[index] >= 0.18
+  );
 }
 
 function hasWoodyNeighbor(state: SimState, index: number): boolean {
@@ -525,6 +564,33 @@ function hasWoodyNeighbor(state: SimState, index: number): boolean {
     if (isWoodyShelter(state, n)) return true;
   }
   return false;
+}
+
+function isWinterShelterCell(state: SimState, index: number): boolean {
+  if (isWoodyShelter(state, index)) return true;
+  if (!isAnimalHabitat(state, index)) return false;
+  if (state.moisture[index] < 0.025 || state.nutrient[index] < 0.05) return false;
+  return hasWoodyNeighbor(state, index);
+}
+
+function isOpenPlainCell(state: SimState, index: number): boolean {
+  return state.base[index] === BaseTerrain.PLAIN && isAnimalHabitat(state, index) && !isWinterShelterCell(state, index);
+}
+
+function distanceToNearestWoodyShelter(state: SimState, index: number): number {
+  const x = index % state.width;
+  const y = Math.floor(index / state.width);
+  let nearest = Number.POSITIVE_INFINITY;
+
+  for (let i = 0; i < state.plantType.length; i++) {
+    if (!isWoodyShelter(state, i)) continue;
+    const wx = i % state.width;
+    const wy = Math.floor(i / state.width);
+    nearest = Math.min(nearest, Math.max(Math.abs(x - wx), Math.abs(y - wy)));
+    if (nearest === 0) break;
+  }
+
+  return Number.isFinite(nearest) ? nearest : Math.max(state.width, state.height);
 }
 
 function herbSignal(state: SimState, index: number): number {
