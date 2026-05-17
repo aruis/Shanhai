@@ -47,6 +47,7 @@ export interface EcoSnapshot {
   woodyBiomass?: MatrixLayer;
   plantMaturity?: MatrixLayer;
   plantStress?: MatrixLayer;
+  barrenRecovery?: MatrixLayer;
   animalCount?: MatrixLayer;
   animalEnergy?: MatrixLayer;
   animalThirst?: MatrixLayer;

@@ -43,6 +43,9 @@ export function collectMetrics(state: SimState, params = stableDefaultParams): M
   let wetCells = 0;
   let riverCells = 0;
   let lakeCells = 0;
+  let barrenCells = 0;
+  let barrenRecovery = 0;
+  let stressedLandCells = 0;
   let oceanCells = 0;
   let maxWater = 0;
   let flowThrough = 0;
@@ -108,11 +111,17 @@ export function collectMetrics(state: SimState, params = stableDefaultParams): M
       case Surface.LAKE:
         lakeCells++;
         break;
+      case Surface.BARREN:
+        barrenCells++;
+        barrenRecovery += state.barrenRecovery[i];
+        if (state.plantStress[i] > 0.2) stressedLandCells++;
+        break;
       case Surface.WET:
         wetCells++;
         break;
       default:
         dryCells++;
+        if (state.plantStress[i] > 0.2 && isAnimalHabitatCell(state, i)) stressedLandCells++;
         break;
     }
   }
@@ -211,6 +220,9 @@ export function collectMetrics(state: SimState, params = stableDefaultParams): M
     riparianGrassCoverage: regionMean(grassland.riparianHerbCells, grassland.riparianLandCells),
     woodyShelterCells: grassland.woodyShelterCells,
     winterShelterCells: grassland.winterShelterCells,
+    barrenCells,
+    meanBarrenRecovery: regionMean(barrenRecovery, barrenCells),
+    stressedLandCells,
   };
 }
 

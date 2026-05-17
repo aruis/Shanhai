@@ -424,6 +424,13 @@ const plantStressKeys = [
   'herb_stress',
 ];
 
+const barrenRecoveryKeys = [
+  'barrenRecovery',
+  'barren_recovery',
+  'recoveryScore',
+  'recovery_score',
+];
+
 const animalCountKeys = [
   'animalCount',
   'animal_count',
@@ -498,6 +505,8 @@ const adaptSnapshot = (snapshot: EcoSnapshot | null): EcoSnapshot | null => {
     plantMaturity:
       snapshot.plantMaturity ?? pickLayer(snapshot, plantMaturityKeys),
     plantStress: snapshot.plantStress ?? pickLayer(snapshot, plantStressKeys),
+    barrenRecovery:
+      snapshot.barrenRecovery ?? pickLayer(snapshot, barrenRecoveryKeys),
     animalCount: snapshot.animalCount ?? pickLayer(snapshot, animalCountKeys),
     animalEnergy: snapshot.animalEnergy ?? pickLayer(snapshot, animalEnergyKeys),
     animalThirst: snapshot.animalThirst ?? pickLayer(snapshot, animalThirstKeys),
@@ -917,6 +926,7 @@ const buildMetricsHistory = (
       'secondAnimalPocket',
       'secondaryAnimalPocket',
     ]),
+    barrenCells: historyValue(item, ['barrenCells', 'barrenCellCount']),
     grassCoverage:
       historyValue(item, [
         'grassCoverage',
@@ -1203,6 +1213,16 @@ const buildMetrics = (
     'winterShelterCells',
     'winterSurvivableHabitatCells',
   ]);
+  const barrenCells = metricValue(sourceMetrics, ['barrenCells', 'barrenCellCount']);
+  const meanBarrenRecovery = metricValue(sourceMetrics, [
+    'meanBarrenRecovery',
+    'barrenRecovery',
+    'recoveryScore',
+  ]);
+  const stressedLandCells = metricValue(sourceMetrics, [
+    'stressedLandCells',
+    'dryStressCells',
+  ]);
   const riparianMoisture =
     metricValue(sourceMetrics, [
       'riparianMoisture',
@@ -1281,6 +1301,9 @@ const buildMetrics = (
     { label: 'Riparian Grass', value: formatPercent(riparianGrassCoverage) },
     { label: 'Woody Shelter Cells', value: formatValue(woodyShelterCells ?? '-') },
     { label: 'Winter Shelter Cells', value: formatValue(winterShelterCells ?? '-') },
+    { label: 'Barren Cells', value: formatValue(barrenCells ?? '-') },
+    { label: 'Stressed Land', value: formatValue(stressedLandCells ?? '-') },
+    { label: 'Barren Recovery', value: formatMetricNumber(meanBarrenRecovery, 2) },
     { label: 'Mean Animal Energy', value: formatMetricNumber(meanAnimalEnergy, 2) },
     { label: 'Mean Animal Thirst', value: formatMetricNumber(meanAnimalThirst, 2) },
     { label: 'Grazed Biomass', value: formatMetricNumber(totalGrazedBiomass, 3) },
@@ -1433,6 +1456,13 @@ const buildInspectorValues = (
       value: formatValue(
         firstPresent(workerCell, plantStressKeys) ??
           readCell(pickLayer(snapshot, plantStressKeys), x, y, width),
+      ),
+    },
+    {
+      label: 'Barren Recovery',
+      value: formatValue(
+        firstPresent(workerCell, barrenRecoveryKeys) ??
+          readCell(pickLayer(snapshot, barrenRecoveryKeys), x, y, width),
       ),
     },
     {

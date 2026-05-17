@@ -3,6 +3,7 @@ import { stepNutrients } from "./nutrients";
 import { stableDefaultParams } from "./params";
 import { stepPlants } from "./plants";
 import { stepAnimals } from "./animals";
+import { stepDesertification } from "./desertification";
 import { scenarios, ScenarioName } from "./scenarios";
 import { Metrics, Params, SimState } from "./types";
 import { collectMetrics } from "./metrics";
@@ -32,6 +33,7 @@ export interface SimSnapshot {
   plantBiomass: Float64Array;
   plantMaturity: Float64Array;
   plantStress: Float64Array;
+  barrenRecovery: Float64Array;
   animalCount: Uint16Array;
   animalEnergy: Float64Array;
   animalThirst: Float64Array;
@@ -103,6 +105,7 @@ export function createSimulation(
         stepNutrients(state, resolvedParams);
         stepPlants(state, resolvedParams);
         stepAnimals(state, resolvedParams);
+        stepDesertification(state, resolvedParams);
       }
       return state;
     },
@@ -130,6 +133,7 @@ export function createSimulation(
         plantBiomass: state.plantBiomass,
         plantMaturity: state.plantMaturity,
         plantStress: state.plantStress,
+        barrenRecovery: state.barrenRecovery,
         animalCount: state.animalCount,
         animalEnergy: state.animalEnergy,
         animalThirst: state.animalThirst,
@@ -193,6 +197,7 @@ export function createSimulation(
         plantBiomass: state.plantBiomass[i],
         plantMaturity: state.plantMaturity[i],
         plantStress: state.plantStress[i],
+        barrenRecovery: state.barrenRecovery[i],
         animalCount: state.animalCount[i],
         animalEnergy: state.animalEnergy[i],
         animalThirst: state.animalThirst[i],

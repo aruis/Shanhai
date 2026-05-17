@@ -41,6 +41,7 @@ function makeState(name: string, seed: number): SimState {
     plantBiomass: new Float64Array(size),
     plantMaturity: new Float64Array(size),
     plantStress: new Float64Array(size),
+    barrenRecovery: new Float64Array(size),
     animals: [],
     animalCount: new Uint16Array(size),
     animalEnergy: new Float64Array(size),

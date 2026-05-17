@@ -27,6 +27,7 @@ interface MetricHistoryPoint {
   shelteredAnimalCount?: number | null;
   largestAnimalPocketPopulation?: number | null;
   secondAnimalPocketPopulation?: number | null;
+  barrenCells?: number | null;
 }
 
 interface MetricsPanelProps {
@@ -46,6 +47,7 @@ const seriesConfig = [
   { key: 'shelteredAnimalCount', label: 'Sheltered', color: '#8ecf8a' },
   { key: 'largestAnimalPocketPopulation', label: 'Largest pocket', color: '#f09a5a' },
   { key: 'secondAnimalPocketPopulation', label: 'Second pocket', color: '#8bb8ff' },
+  { key: 'barrenCells', label: 'Barren', color: '#a88f71' },
 ] satisfies Array<{
   key: keyof MetricHistoryPoint;
   label: string;

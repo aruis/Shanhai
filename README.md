@@ -16,15 +16,16 @@ The current prototype focuses on the hydrology-to-vegetation-to-herbivore ecolog
 - local herbivore movement, grazing, reproduction, and seasonal population cycles
 - terrain-split animal pocket diagnostics
 - winter shelter survival diagnostics
+- barren land degradation and recovery diagnostics
 - fixed validation scenarios
 - PixiJS grid visualization
 - Web Worker simulation loop
 
 ## Current Milestone
 
-### M5.5: Winter Shelter Survival Diagnostics
+### M6.1: Barren Land Degradation and Recovery
 
-M2 hydrology-to-grass behavior is implemented and protected by validation coverage. M3 added woody plants and a stable foothill shelter scenario. M4 made one local-vision herbivore population observable and diagnosable. M5.5 adds winter shelter survival diagnostics:
+M2 hydrology-to-grass behavior is implemented and protected by validation coverage. M3 added woody plants and a stable foothill shelter scenario. M4 made one local-vision herbivore population observable and diagnosable. M5 adds seasonal herbivore population cycles. M6.1 adds barren land degradation and recovery diagnostics:
 
 - per-cell hydrology budget inspection
 - flow direction arrows
@@ -46,6 +47,7 @@ M2 hydrology-to-grass behavior is implemented and protected by validation covera
 - M5.3 soil-moisture drinking, lower foothill animal seed pressure, low-hill shelter seeking bias, far/open-plain animal metrics, longer 720-tick metric chart window, and multi-year cycle validation tests
 - M5.4 mountain-split plain pocket scenario, animal habitat connected-component metrics, largest/second/third pocket population diagnostics, pocket trend lines, and deterministic seasonal pocket-series tests
 - M5.5 per-cell death-to-woody-shelter distance, sheltered/open-plain death counters, survivor-to-woody distance metrics, inspector output, and deterministic survival-diagnostics tests
+- M6.1 dry-stress accumulation, `BARREN` surface persistence, moisture/nutrient/neighbor-plant recovery scoring, barren metrics, UI/inspector output, and deterministic degradation/recovery tests
 
 ## Roadmap
 
@@ -54,6 +56,7 @@ M2 hydrology-to-grass behavior is implemented and protected by validation covera
 - **M3 Woody Plants and Terrain Zoning:** add slow-growing woody plants, low-hill forest bands, plant competition, and stable foothill shelter signals for future animals. M3.2 is complete.
 - **M4 Animal Survival:** add local herbivore movement, thirst, hunger, grazing, death, nutrient return, and behavior debugging. M4.3 is complete enough for the current workbench.
 - **M5 Reproduction and Seasonal Population Cycles:** add age, sex, reproduction cooldown, autumn energy storage, winter shelter, and population oscillation metrics. M5.5 validates mountain-split plain pockets, per-pocket animal curves, and winter shelter survival diagnostics.
+- **M6 Degradation and Recovery:** add dry-stress accumulation, barren land persistence, and moisture/nutrient/neighbor-plant recovery. M6.1 is in place with focused validation coverage.
 
 ## Validation Scenarios
 

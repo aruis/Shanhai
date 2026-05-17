@@ -72,6 +72,9 @@ export type SimMetrics = {
   largestAnimalPocketPopulation?: number;
   secondAnimalPocketPopulation?: number;
   thirdAnimalPocketPopulation?: number;
+  barrenCells?: number;
+  meanBarrenRecovery?: number;
+  stressedLandCells?: number;
   [key: string]: unknown;
 };
 
@@ -97,6 +100,7 @@ export type SimSnapshot = {
   animalMoveBlockedCapacity?: unknown;
   animalMoveBlockedIllegal?: unknown;
   animalMoveBlockedEnergy?: unknown;
+  barrenRecovery?: unknown;
   cells?: unknown;
   [key: string]: unknown;
 };

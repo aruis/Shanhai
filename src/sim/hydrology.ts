@@ -217,7 +217,9 @@ export function stepHydrology(state: SimState, params: Params): SimState {
 
     if (isLake) nextSurface[i] = Surface.LAKE;
     else if (isRiver) nextSurface[i] = Surface.RIVER;
-    else if (nextWater[i] > params.wetWaterThreshold || nextMoisture[i] > params.wetMoistureThreshold) {
+    else if (nextSurface[i] === Surface.BARREN) {
+      nextSurface[i] = Surface.BARREN;
+    } else if (nextWater[i] > params.wetWaterThreshold || nextMoisture[i] > params.wetMoistureThreshold) {
       nextSurface[i] = Surface.WET;
     } else {
       nextSurface[i] = Surface.DRY;

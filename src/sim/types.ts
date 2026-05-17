@@ -63,6 +63,7 @@ export interface SimState {
   plantBiomass: Float64Array;
   plantMaturity: Float64Array;
   plantStress: Float64Array;
+  barrenRecovery: Float64Array;
   animals: Animal[];
   animalCount: Uint16Array;
   animalEnergy: Float64Array;
@@ -206,6 +207,16 @@ export interface Params {
   animalBirthThirst: number;
   animalReproductionRate: number;
   animalMaxPopulation: number;
+  barrenMoistureThreshold: number;
+  barrenNutrientThreshold: number;
+  dryStressGain: number;
+  dryStressRecovery: number;
+  barrenEnterThreshold: number;
+  recoveryMoisture: number;
+  recoveryNutrient: number;
+  recoveryGain: number;
+  recoveryDecay: number;
+  barrenExitThreshold: number;
 }
 
 export interface Metrics {
@@ -260,6 +271,9 @@ export interface Metrics {
   riparianGrassCoverage: number;
   woodyShelterCells: number;
   winterShelterCells: number;
+  barrenCells: number;
+  meanBarrenRecovery: number;
+  stressedLandCells: number;
   plantableLandCells: number;
   lowHillPlantableCells: number;
   riparianLandCells: number;

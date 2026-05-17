@@ -1,5 +1,6 @@
 import { describe, expect, it } from "vitest";
 import { stableDefaultParams } from "../../src/sim/params";
+import { stepDesertification } from "../../src/sim/desertification";
 import { scenarios } from "../../src/sim/scenarios";
 import { createSimulation } from "../../src/sim/simulation";
 import { BaseTerrain, PlantType, Surface } from "../../src/sim/types";
@@ -86,6 +87,7 @@ describe("M2 herb ecology", () => {
     expect(Array.from(a.state.plantBiomass)).toEqual(Array.from(b.state.plantBiomass));
     expect(Array.from(a.state.plantMaturity)).toEqual(Array.from(b.state.plantMaturity));
     expect(Array.from(a.state.plantStress)).toEqual(Array.from(b.state.plantStress));
+    expect(Array.from(a.state.barrenRecovery)).toEqual(Array.from(b.state.barrenRecovery));
     expect(a.metrics()).toEqual(b.metrics());
     expect(
       Array.from(a.state.plantType).every(
@@ -216,6 +218,7 @@ describe("M3.2 foothill shelter vegetation validation", () => {
     expect(Array.from(a.plantType)).toEqual(Array.from(b.plantType));
     expect(Array.from(a.plantBiomass)).toEqual(Array.from(b.plantBiomass));
     expect(Array.from(a.plantMaturity)).toEqual(Array.from(b.plantMaturity));
+    expect(Array.from(a.barrenRecovery)).toEqual(Array.from(b.barrenRecovery));
     expect(a.springs).toEqual(b.springs);
     expect(woodyCellCount(a)).toBeGreaterThan(0);
   });
@@ -264,6 +267,74 @@ describe("M3.2 foothill shelter vegetation validation", () => {
     expect(metrics.woodyShelterCells).toBeGreaterThan(0);
     expect(metrics.winterShelterCells).toBeGreaterThanOrEqual(0);
     expect(metrics.winterShelterCells).toBeLessThanOrEqual(metrics.plantableLandCells);
+  });
+});
+
+describe("M6.1 desertification and recovery validation", () => {
+  it("turns persistently dry, nutrient-poor plantable land into barren surface", () => {
+    const state = scenarios.riverValleyGrassland();
+    const target = findDryPlainCell(state);
+    const initialNutrient = 0.01;
+    state.surface[target] = Surface.DRY;
+    state.moisture[target] = 0;
+    state.nutrient[target] = initialNutrient;
+    state.plantType[target] = PlantType.HERB;
+    state.plantBiomass[target] = 0.5;
+    state.plantMaturity[target] = 1;
+    state.plantStress[target] = 0.96;
+
+    stepDesertification(state, {
+      ...stableDefaultParams,
+      dryStressGain: 0.08,
+      barrenEnterThreshold: 1,
+    });
+
+    expect(state.surface[target]).toBe(Surface.BARREN);
+    expect(state.plantType[target]).toBe(PlantType.EMPTY);
+    expect(state.plantBiomass[target]).toBe(0);
+    expect(state.plantMaturity[target]).toBe(0);
+    expect(state.nutrient[target]).toBeGreaterThan(initialNutrient);
+
+    const metrics = createSimulation("riverValleyGrassland", stableDefaultParams);
+    metrics.state = state;
+    expect(metrics.metrics().barrenCells).toBeGreaterThan(0);
+    expect(metrics.metrics().stressedLandCells).toBeGreaterThan(0);
+  });
+
+  it("recovers barren land only when moisture, nutrients, and neighboring plant source persist", () => {
+    const state = scenarios.riverValleyGrassland();
+    const recoverable = findDryPlainCell(state);
+    const blocked = findDryPlainCellAwayFrom(state, recoverable, 4);
+    const source = recoverable + 1;
+    state.surface[recoverable] = Surface.BARREN;
+    state.moisture[recoverable] = 0.2;
+    state.nutrient[recoverable] = 0.3;
+    state.barrenRecovery[recoverable] = 0.96;
+
+    state.base[source] = BaseTerrain.PLAIN;
+    state.surface[source] = Surface.DRY;
+    state.moisture[source] = 0.2;
+    state.nutrient[source] = 0.3;
+    state.plantType[source] = PlantType.HERB;
+    state.plantBiomass[source] = 0.2;
+
+    state.surface[blocked] = Surface.BARREN;
+    state.moisture[blocked] = 0.2;
+    state.nutrient[blocked] = 0.3;
+    state.barrenRecovery[blocked] = 0.96;
+    clearNeighboringPlants(state, blocked);
+
+    stepDesertification(state, {
+      ...stableDefaultParams,
+      recoveryGain: 0.08,
+      recoveryDecay: 0.04,
+      barrenExitThreshold: 1,
+    });
+
+    expect(state.surface[recoverable]).toBe(Surface.DRY);
+    expect(state.barrenRecovery[recoverable]).toBe(0);
+    expect(state.surface[blocked]).toBe(Surface.BARREN);
+    expect(state.barrenRecovery[blocked]).toBeLessThan(0.96);
   });
 });
 
@@ -389,6 +460,44 @@ function woodyCellCount(state: SimState): number {
 
 function isWoody(state: SimState, index: number): boolean {
   return state.plantType[index] === WOODY_PLANT_TYPE;
+}
+
+function findDryPlainCell(state: SimState, start = 0): number {
+  for (let index = start; index < state.base.length; index++) {
+    const x = index % state.width;
+    if (x <= 1 || x >= state.width - 2) continue;
+    if (state.base[index] === BaseTerrain.PLAIN && state.surface[index] === Surface.DRY) return index;
+  }
+  throw new Error("Expected a dry plain cell");
+}
+
+function findDryPlainCellAwayFrom(state: SimState, avoided: number, minDistance: number): number {
+  for (let index = 0; index < state.base.length; index++) {
+    const x = index % state.width;
+    const y = Math.floor(index / state.width);
+    const ax = avoided % state.width;
+    const ay = Math.floor(avoided / state.width);
+    if (Math.max(Math.abs(x - ax), Math.abs(y - ay)) < minDistance) continue;
+    if (x <= 1 || x >= state.width - 2) continue;
+    if (state.base[index] === BaseTerrain.PLAIN && state.surface[index] === Surface.DRY) return index;
+  }
+  throw new Error("Expected a dry plain cell away from the avoided cell");
+}
+
+function clearNeighboringPlants(state: SimState, index: number): void {
+  const x = index % state.width;
+  const y = Math.floor(index / state.width);
+  for (let dy = -1; dy <= 1; dy++) {
+    for (let dx = -1; dx <= 1; dx++) {
+      const nx = x + dx;
+      const ny = y + dy;
+      if (nx < 0 || ny < 0 || nx >= state.width || ny >= state.height) continue;
+      const n = ny * state.width + nx;
+      state.plantType[n] = PlantType.EMPTY;
+      state.plantBiomass[n] = 0;
+      state.plantMaturity[n] = 0;
+    }
+  }
 }
 
 function woodyTerrainSignal(state: SimState): {

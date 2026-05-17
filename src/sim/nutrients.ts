@@ -31,7 +31,9 @@ export function stepNutrients(state: SimState, params: Params): SimState {
 function isRiparianTarget(state: SimState, index: number): boolean {
   return (
     state.base[index] !== BaseTerrain.OCEAN &&
-    (state.surface[index] === Surface.DRY || state.surface[index] === Surface.WET)
+    (state.surface[index] === Surface.DRY ||
+      state.surface[index] === Surface.WET ||
+      state.surface[index] === Surface.BARREN)
   );
 }
 
