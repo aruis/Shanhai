@@ -47,6 +47,7 @@ function makeState(name: string, seed: number): SimState {
     animalThirst: new Float64Array(size),
     animalGrazing: new Float64Array(size),
     animalDeaths: new Uint16Array(size),
+    animalBirths: new Uint16Array(size),
     animalIntentType: new Uint8Array(size),
     animalIntentDirection: new Int8Array(size).fill(-1),
     animalMoveSuccess: new Uint16Array(size),
@@ -396,9 +397,11 @@ function seedInitialAnimals(
     state.animals.push({
       id,
       index,
+      sex: hashUnit(state.seed ^ 0x165667b1, index) < 0.5 ? 0 : 1,
       energy: 1.05 + hashUnit(state.seed ^ 0x7f4a7c15, index) * 0.18,
       thirst: 0.78 + hashUnit(state.seed ^ 0x3c6ef372, index) * 0.16,
       age: Math.floor(hashUnit(state.seed ^ 0x51ed270b, index) * 120),
+      reproduceCooldown: Math.floor(hashUnit(state.seed ^ 0x27d4eb2f, index) * 80),
       alive: true,
     });
   }
@@ -420,6 +423,7 @@ function rebuildAnimalLayers(state: SimState): void {
   state.animalThirst.fill(0);
   state.animalGrazing.fill(0);
   state.animalDeaths.fill(0);
+  state.animalBirths.fill(0);
   state.animalIntentType.fill(0);
   state.animalIntentDirection.fill(-1);
   state.animalMoveSuccess.fill(0);

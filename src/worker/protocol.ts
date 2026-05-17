@@ -41,6 +41,7 @@ export type SimMetrics = {
   aliveAnimals?: number;
   deadAnimals?: number;
   animalDeaths?: number;
+  animalBirths?: number;
   meanAnimalEnergy?: number;
   meanAnimalThirst?: number;
   totalGrazedBiomass?: number;
@@ -69,6 +70,7 @@ export type SimSnapshot = {
   animalThirst?: unknown;
   animalGrazing?: unknown;
   animalDeaths?: unknown;
+  animalBirths?: unknown;
   animalIntentType?: unknown;
   animalIntentDirection?: unknown;
   animalMoveSuccess?: unknown;

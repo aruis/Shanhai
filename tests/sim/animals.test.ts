@@ -193,6 +193,67 @@ describe("M4.3 animal blocked-move diagnostics", () => {
   });
 });
 
+describe("M5.1 animal reproduction validation", () => {
+  it("creates deterministic spring births when adults have nearby mates and capacity", () => {
+    const params = {
+      ...stableDefaultParams,
+      animalAdultAge: 0,
+      animalReproduceCooldownTicks: 30,
+      animalReproduceEnergyThreshold: 0.2,
+      animalReproduceThirstThreshold: 0.2,
+      animalReproductionRate: 1,
+      animalCellCapacity: 8,
+      animalMaxPopulation: 260,
+    };
+    const a = createSimulation(FOOTHILL_SHELTER, params);
+    const b = createSimulation(FOOTHILL_SHELTER, params);
+    prepareBreedingAdults(a.state.animals);
+    prepareBreedingAdults(b.state.animals);
+
+    a.step();
+    b.step();
+
+    const metrics = a.metrics();
+    expect(metrics.season).toBe("spring");
+    expect(metrics.animalBirths).toBeGreaterThan(0);
+    expect(metrics.animalCount).toBeGreaterThan(170);
+    expect(sum(a.state.animalBirths)).toBe(metrics.animalBirths);
+    expect(Array.from(a.state.animalBirths)).toEqual(Array.from(b.state.animalBirths));
+    expect(a.state.animals).toEqual(b.state.animals);
+  });
+
+  it("does not reproduce in winter even under favorable physiology", () => {
+    const sim = createSimulation(FOOTHILL_SHELTER, {
+      ...stableDefaultParams,
+      animalAdultAge: 0,
+      animalReproduceCooldownTicks: 30,
+      animalReproduceEnergyThreshold: 0.2,
+      animalReproduceThirstThreshold: 0.2,
+      animalReproductionRate: 1,
+      animalCellCapacity: 8,
+      animalMaxPopulation: 260,
+    });
+    sim.step(269);
+    prepareBreedingAdults(sim.state.animals);
+
+    sim.step();
+    const metrics = sim.metrics();
+
+    expect(metrics.season).toBe("winter");
+    expect(metrics.animalBirths).toBe(0);
+    expect(sum(sim.state.animalBirths)).toBe(0);
+  });
+});
+
+function prepareBreedingAdults(animals: Array<{ age: number; energy: number; thirst: number; reproduceCooldown: number }>): void {
+  for (const animal of animals) {
+    animal.age = 240;
+    animal.energy = stableDefaultParams.animalEnergyMax;
+    animal.thirst = stableDefaultParams.animalThirstMax;
+    animal.reproduceCooldown = 0;
+  }
+}
+
 function sum(values: ArrayLike<number>): number {
   let total = 0;
   for (let i = 0; i < values.length; i++) total += values[i];

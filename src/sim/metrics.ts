@@ -15,6 +15,7 @@ export function collectMetrics(state: SimState): Metrics {
   let animalEnergy = 0;
   let animalThirst = 0;
   let animalDeaths = 0;
+  let animalBirths = 0;
   let animalGrazing = 0;
   let thirstyAnimals = 0;
   let hungryAnimals = 0;
@@ -57,6 +58,7 @@ export function collectMetrics(state: SimState): Metrics {
       if (state.animalEnergy[i] < 0.72) hungryAnimals += state.animalCount[i];
     }
     animalDeaths += state.animalDeaths[i] ?? 0;
+    animalBirths += state.animalBirths[i] ?? 0;
     animalGrazing += state.animalGrazing[i] ?? 0;
     animalMoveSuccesses += state.animalMoveSuccess[i] ?? 0;
     animalMoveBlocked += state.animalMoveBlocked[i] ?? 0;
@@ -115,7 +117,7 @@ export function collectMetrics(state: SimState): Metrics {
     woodyBiomass,
     animalCount,
     animalDeaths,
-    animalBirths: 0,
+    animalBirths,
     meanAnimalEnergy: regionMean(animalEnergy, animalCount),
     meanAnimalThirst: regionMean(animalThirst, animalCount),
     totalGrazedBiomass: animalGrazing,

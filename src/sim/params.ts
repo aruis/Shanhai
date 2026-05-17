@@ -91,4 +91,13 @@ export const stableDefaultParams: Params = {
   animalHerbEnergyFactor: 0.7,
   animalGrazeRate: 0.1,
   animalBodyNutrientReturn: 0.09,
+  animalAdultAge: 120,
+  animalReproduceEnergyThreshold: 1.12,
+  animalReproduceThirstThreshold: 0.72,
+  animalReproduceCooldownTicks: 140,
+  animalReproduceEnergyCost: 0.16,
+  animalBirthEnergy: 0.78,
+  animalBirthThirst: 0.82,
+  animalReproductionRate: 0.035,
+  animalMaxPopulation: 420,
 };

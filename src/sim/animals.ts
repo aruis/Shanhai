@@ -15,6 +15,7 @@ export function stepAnimals(state: SimState, params: Params): SimState {
   const season = seasonForTick(state.tick);
   const deathReturns = new Float64Array(state.nutrient.length);
   const deaths = new Uint16Array(state.nutrient.length);
+  const births = new Uint16Array(state.nutrient.length);
   const grazing = new Float64Array(state.nutrient.length);
   const intentType = new Uint8Array(state.nutrient.length);
   const intentDirection = new Int8Array(state.nutrient.length).fill(-1);
@@ -29,6 +30,7 @@ export function stepAnimals(state: SimState, params: Params): SimState {
     if (!animal.alive) continue;
 
     animal.age++;
+    animal.reproduceCooldown = Math.max(0, animal.reproduceCooldown - 1);
     animal.energy = clamp(animal.energy - params.animalBaseMetabolism, 0, params.animalEnergyMax);
     animal.thirst = clamp(animal.thirst - params.animalThirstDecay, 0, params.animalThirstMax);
 
@@ -64,10 +66,12 @@ export function stepAnimals(state: SimState, params: Params): SimState {
     blockedEnergy,
   );
   settleDrinkAndGraze(state, params, deathReturns, deaths, grazing);
+  settleReproduction(state, params, season, births);
   commitDeathReturns(state, params, deathReturns);
   rebuildAnimalLayers(
     state,
     deaths,
+    births,
     grazing,
     intentType,
     intentDirection,
@@ -285,6 +289,105 @@ function settleDrinkAndGraze(
   }
 }
 
+function settleReproduction(
+  state: SimState,
+  params: Params,
+  season: ReturnType<typeof seasonForTick>,
+  births: Uint16Array,
+): void {
+  if (season !== "spring" && season !== "summer") return;
+  if (state.animals.length >= params.animalMaxPopulation) return;
+
+  const occupancy = new Uint16Array(state.animalCount.length);
+  let nextId = 0;
+  for (const animal of state.animals) {
+    if (!animal.alive) continue;
+    occupancy[animal.index]++;
+    nextId = Math.max(nextId, animal.id + 1);
+  }
+
+  const parents = state.animals
+    .filter((animal) => canReproduce(animal, params) && hasNearbyMate(state, animal, params))
+    .sort((a, b) => reproductionOrder(state, a) - reproductionOrder(state, b));
+
+  for (const parent of parents) {
+    if (state.animals.length >= params.animalMaxPopulation) break;
+    if (!parent.alive || !canReproduce(parent, params)) continue;
+    if (!hasNearbyMate(state, parent, params)) continue;
+    if (hashUnit(state.seed ^ Math.imul(state.tick + 11, 0x85ebca6b), parent.id) > params.animalReproductionRate) {
+      continue;
+    }
+
+    const target = chooseBirthCell(state, params, parent.index, occupancy);
+    if (target < 0) continue;
+
+    const childId = nextId++;
+    parent.energy = clamp(parent.energy - params.animalReproduceEnergyCost, 0, params.animalEnergyMax);
+    parent.reproduceCooldown = params.animalReproduceCooldownTicks;
+    occupancy[target]++;
+    births[target]++;
+    state.animals.push({
+      id: childId,
+      index: target,
+      sex: hashUnit(state.seed ^ 0x9e3779b9, childId) < 0.5 ? 0 : 1,
+      energy: params.animalBirthEnergy,
+      thirst: params.animalBirthThirst,
+      age: 0,
+      reproduceCooldown: params.animalReproduceCooldownTicks,
+      alive: true,
+    });
+  }
+}
+
+function canReproduce(animal: Animal, params: Params): boolean {
+  return (
+    animal.alive &&
+    animal.age >= params.animalAdultAge &&
+    animal.reproduceCooldown <= 0 &&
+    animal.energy >= params.animalReproduceEnergyThreshold &&
+    animal.thirst >= params.animalReproduceThirstThreshold
+  );
+}
+
+function hasNearbyMate(state: SimState, animal: Animal, params: Params): boolean {
+  for (const other of state.animals) {
+    if (other.id === animal.id || other.index !== animal.index && !areNeighbors(state, animal.index, other.index)) continue;
+    if (other.sex === animal.sex || !canReproduce(other, params)) continue;
+    return true;
+  }
+  return false;
+}
+
+function chooseBirthCell(
+  state: SimState,
+  params: Params,
+  origin: number,
+  occupancy: Uint16Array,
+): number {
+  let best = -1;
+  let bestScore = Number.POSITIVE_INFINITY;
+  const candidates = [origin, ...neighbors(origin, state.width, state.height)];
+  for (const target of candidates) {
+    if (!isAnimalHabitat(state, target)) continue;
+    if (occupancy[target] >= params.animalCellCapacity) continue;
+    const food = state.plantType[target] === PlantType.HERB ? state.plantBiomass[target] : 0;
+    const score = hashUnit(state.seed ^ Math.imul(state.tick + 17, 0x7feb352d), target) - food * 0.1 - state.moisture[target] * 0.05;
+    if (score < bestScore) {
+      best = target;
+      bestScore = score;
+    }
+  }
+  return best;
+}
+
+function areNeighbors(state: SimState, a: number, b: number): boolean {
+  const ax = a % state.width;
+  const ay = Math.floor(a / state.width);
+  const bx = b % state.width;
+  const by = Math.floor(b / state.width);
+  return Math.max(Math.abs(ax - bx), Math.abs(ay - by)) <= 1;
+}
+
 function killAnimal(
   animal: Animal,
   index: number,
@@ -308,6 +411,7 @@ function commitDeathReturns(state: SimState, params: Params, deathReturns: Float
 function rebuildAnimalLayers(
   state: SimState,
   deaths: Uint16Array = new Uint16Array(state.animalCount.length),
+  births: Uint16Array = new Uint16Array(state.animalCount.length),
   grazing: Float64Array = new Float64Array(state.animalCount.length),
   intentType: Uint8Array = new Uint8Array(state.animalCount.length),
   intentDirection: Int8Array = new Int8Array(state.animalCount.length).fill(-1),
@@ -322,6 +426,7 @@ function rebuildAnimalLayers(
   state.animalThirst.fill(0);
   state.animalGrazing = grazing;
   state.animalDeaths = deaths;
+  state.animalBirths = births;
   state.animalIntentType = intentType;
   state.animalIntentDirection = intentDirection;
   state.animalMoveSuccess = moveSuccess;
@@ -411,6 +516,10 @@ function herbSignal(state: SimState, index: number): number {
 
 function moveOrder(state: SimState, animal: Animal): number {
   return hashUnit(state.seed ^ Math.imul(state.tick + 1, 0x9e3779b9), animal.id);
+}
+
+function reproductionOrder(state: SimState, animal: Animal): number {
+  return hashUnit(state.seed ^ Math.imul(state.tick + 3, 0x1b873593), animal.id);
 }
 
 function hashUnit(seed: number, index: number): number {

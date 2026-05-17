@@ -37,6 +37,7 @@ export interface SimSnapshot {
   animalThirst: Float64Array;
   animalGrazing: Float64Array;
   animalDeaths: Uint16Array;
+  animalBirths: Uint16Array;
   animalIntentType: Uint8Array;
   animalIntentDirection: Int8Array;
   animalMoveSuccess: Uint16Array;
@@ -131,6 +132,7 @@ export function createSimulation(
         animalThirst: state.animalThirst,
         animalGrazing: state.animalGrazing,
         animalDeaths: state.animalDeaths,
+        animalBirths: state.animalBirths,
         animalIntentType: state.animalIntentType,
         animalIntentDirection: state.animalIntentDirection,
         animalMoveSuccess: state.animalMoveSuccess,
@@ -190,6 +192,7 @@ export function createSimulation(
         animalThirst: state.animalThirst[i],
         animalGrazing: state.animalGrazing[i],
         animalDeaths: state.animalDeaths[i],
+        animalBirths: state.animalBirths[i],
         animalIntentType: state.animalIntentType[i],
         animalIntentDirection: state.animalIntentDirection[i],
         animalMoveSuccess: state.animalMoveSuccess[i],

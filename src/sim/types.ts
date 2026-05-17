@@ -69,6 +69,7 @@ export interface SimState {
   animalThirst: Float64Array;
   animalGrazing: Float64Array;
   animalDeaths: Uint16Array;
+  animalBirths: Uint16Array;
   animalIntentType: Uint8Array;
   animalIntentDirection: Int8Array;
   animalMoveSuccess: Uint16Array;
@@ -99,9 +100,11 @@ export interface SimState {
 export interface Animal {
   id: number;
   index: number;
+  sex: 0 | 1;
   energy: number;
   thirst: number;
   age: number;
+  reproduceCooldown: number;
   alive: boolean;
 }
 
@@ -186,6 +189,15 @@ export interface Params {
   animalHerbEnergyFactor: number;
   animalGrazeRate: number;
   animalBodyNutrientReturn: number;
+  animalAdultAge: number;
+  animalReproduceEnergyThreshold: number;
+  animalReproduceThirstThreshold: number;
+  animalReproduceCooldownTicks: number;
+  animalReproduceEnergyCost: number;
+  animalBirthEnergy: number;
+  animalBirthThirst: number;
+  animalReproductionRate: number;
+  animalMaxPopulation: number;
 }
 
 export interface Metrics {

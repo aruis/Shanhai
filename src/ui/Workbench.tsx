@@ -435,6 +435,7 @@ const animalEnergyKeys = ['animalEnergy', 'animal_energy'];
 const animalThirstKeys = ['animalThirst', 'animal_thirst'];
 const animalGrazingKeys = ['animalGrazing', 'animal_grazing', 'grazing'];
 const animalDeathsKeys = ['animalDeaths', 'animal_deaths', 'deaths'];
+const animalBirthsKeys = ['animalBirths', 'animal_births', 'births'];
 const animalIntentTypeKeys = [
   'animalIntentType',
   'animal_intent_type',
@@ -487,6 +488,7 @@ const adaptSnapshot = (snapshot: EcoSnapshot | null): EcoSnapshot | null => {
     animalGrazing:
       snapshot.animalGrazing ?? pickLayer(snapshot, animalGrazingKeys),
     animalDeaths: snapshot.animalDeaths ?? pickLayer(snapshot, animalDeathsKeys),
+    animalBirths: snapshot.animalBirths ?? pickLayer(snapshot, animalBirthsKeys),
     animalIntentType:
       snapshot.animalIntentType ?? pickLayer(snapshot, animalIntentTypeKeys),
     animalIntentDirection:
@@ -1021,6 +1023,7 @@ const buildMetrics = (
     'grazedBiomass',
   ]);
   const animalDeaths = metricValue(sourceMetrics, ['animalDeaths', 'deadAnimals']);
+  const animalBirths = metricValue(sourceMetrics, ['animalBirths', 'births']);
   const seekingWaterAnimals = metricValue(sourceMetrics, ['seekingWaterAnimals']);
   const seekingFoodAnimals = metricValue(sourceMetrics, ['seekingFoodAnimals']);
   const seekingShelterAnimals = metricValue(sourceMetrics, ['seekingShelterAnimals']);
@@ -1177,6 +1180,7 @@ const buildMetrics = (
     { label: 'Mean Animal Thirst', value: formatMetricNumber(meanAnimalThirst, 2) },
     { label: 'Grazed Biomass', value: formatMetricNumber(totalGrazedBiomass, 3) },
     { label: 'Animal Deaths', value: formatValue(animalDeaths ?? '-') },
+    { label: 'Animal Births', value: formatValue(animalBirths ?? '-') },
     { label: 'Seeking Water', value: formatValue(seekingWaterAnimals ?? '-') },
     { label: 'Seeking Food', value: formatValue(seekingFoodAnimals ?? '-') },
     { label: 'Seeking Shelter', value: formatValue(seekingShelterAnimals ?? '-') },
@@ -1353,6 +1357,13 @@ const buildInspectorValues = (
       value: formatValue(
         firstPresent(workerCell, animalDeathsKeys) ??
           readCell(pickLayer(snapshot, animalDeathsKeys), x, y, width),
+      ),
+    },
+    {
+      label: 'Births',
+      value: formatValue(
+        firstPresent(workerCell, animalBirthsKeys) ??
+          readCell(pickLayer(snapshot, animalBirthsKeys), x, y, width),
       ),
     },
     {
