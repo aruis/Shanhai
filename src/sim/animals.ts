@@ -173,7 +173,9 @@ function foodSeekingScore(state: SimState, params: Params, from: number, target:
 
 function shelterSeekingScore(state: SimState, _params: Params, _from: number, target: number): number {
   if (isWoodyShelter(state, target)) return 2 + state.plantBiomass[target];
-  return hasWoodyNeighbor(state, target) ? 0.6 : 0;
+  let score = state.base[target] === BaseTerrain.LOW_HILL ? 0.18 : 0;
+  if (hasWoodyNeighbor(state, target)) score += 0.6;
+  return score;
 }
 
 function wanderScore(state: SimState, params: Params, from: number, target: number): number {
@@ -253,8 +255,12 @@ function settleDrinkAndGraze(
     if (!animal.alive) continue;
     if (hasAdjacentWater(state, animal.index)) {
       animal.thirst = params.animalThirstMax;
-    } else if (state.moisture[animal.index] > params.animalThirstCritical) {
-      animal.thirst = clamp(animal.thirst + state.moisture[animal.index] * 0.08, 0, params.animalThirstMax);
+    } else if (state.moisture[animal.index] > params.animalSoilMoistureDrinkThreshold) {
+      animal.thirst = clamp(
+        animal.thirst + state.moisture[animal.index] * params.animalSoilMoistureDrinkRate,
+        0,
+        params.animalThirstMax,
+      );
     }
 
     if (

@@ -181,6 +181,8 @@ export interface Params {
   animalWoodyShelterCostMultiplier: number;
   animalThirstDecay: number;
   animalThirstCritical: number;
+  animalSoilMoistureDrinkThreshold: number;
+  animalSoilMoistureDrinkRate: number;
   animalHungerThreshold: number;
   animalAutumnForageThreshold: number;
   animalAutumnGrazeRateMultiplier: number;
@@ -237,6 +239,8 @@ export interface Metrics {
   animalMoveBlockedEnergy: number;
   riparianAnimalCount: number;
   shelteredAnimalCount: number;
+  farAnimalCount: number;
+  openPlainAnimalCount: number;
   herbToWoodyRatio: number;
   grassCoverage: number;
   woodyCoverage: number;

@@ -157,6 +157,8 @@ export function collectMetrics(state: SimState, params = stableDefaultParams): M
     animalMoveBlockedEnergy,
     riparianAnimalCount: grassland.riparianAnimalCount,
     shelteredAnimalCount: grassland.shelteredAnimalCount,
+    farAnimalCount: grassland.farAnimalCount,
+    openPlainAnimalCount: grassland.openPlainAnimalCount,
     herbToWoodyRatio: ratio(herbCells, woodyCells),
     meanMoisture: totalMoisture / state.moisture.length,
     meanNutrient: totalNutrient / state.nutrient.length,
@@ -212,6 +214,8 @@ interface GrasslandMetrics {
   winterShelterCells: number;
   riparianAnimalCount: number;
   shelteredAnimalCount: number;
+  farAnimalCount: number;
+  openPlainAnimalCount: number;
 }
 
 function collectGrasslandMetrics(state: SimState): GrasslandMetrics {
@@ -229,6 +233,8 @@ function collectGrasslandMetrics(state: SimState): GrasslandMetrics {
   let winterShelterCells = 0;
   let riparianAnimalCount = 0;
   let shelteredAnimalCount = 0;
+  let farAnimalCount = 0;
+  let openPlainAnimalCount = 0;
   const riparian = createRegionAccumulator();
   const far = createRegionAccumulator();
 
@@ -250,8 +256,16 @@ function collectGrasslandMetrics(state: SimState): GrasslandMetrics {
       riparianAnimalCount += state.animalCount[i];
     } else if (distance >= 6) {
       addRegionCell(far, state, i);
+      farAnimalCount += state.animalCount[i];
     }
     if (isWinterShelterCell(state, i)) shelteredAnimalCount += state.animalCount[i];
+    if (
+      state.base[i] === BaseTerrain.PLAIN &&
+      distance >= 6 &&
+      !isWinterShelterCell(state, i)
+    ) {
+      openPlainAnimalCount += state.animalCount[i];
+    }
   }
 
   return {
@@ -271,6 +285,8 @@ function collectGrasslandMetrics(state: SimState): GrasslandMetrics {
     winterShelterCells,
     riparianAnimalCount,
     shelteredAnimalCount,
+    farAnimalCount,
+    openPlainAnimalCount,
   };
 }
 

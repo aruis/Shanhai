@@ -59,6 +59,10 @@ export type SimMetrics = {
   animalMoveBlockedCapacity?: number;
   animalMoveBlockedIllegal?: number;
   animalMoveBlockedEnergy?: number;
+  riparianAnimalCount?: number;
+  shelteredAnimalCount?: number;
+  farAnimalCount?: number;
+  openPlainAnimalCount?: number;
   [key: string]: unknown;
 };
 

@@ -873,6 +873,7 @@ const buildMetricsHistory = (
       'reproductiveAnimalCount',
       'reproductiveAnimals',
     ]),
+    shelteredAnimalCount: historyValue(item, ['shelteredAnimalCount', 'shelteredAnimals']),
     grassCoverage:
       historyValue(item, [
         'grassCoverage',
@@ -1071,6 +1072,12 @@ const buildMetrics = (
     'shelteredAnimalCount',
     'shelteredAnimals',
   ]);
+  const farAnimalCount = metricValue(sourceMetrics, ['farAnimalCount', 'farAnimals']);
+  const openPlainAnimalCount = metricValue(sourceMetrics, [
+    'openPlainAnimalCount',
+    'openPlainAnimals',
+    'plainAnimals',
+  ]);
   const grassland = buildGrasslandSignal(snapshot);
   const grassCoverage =
     metricValue(sourceMetrics, [
@@ -1210,6 +1217,8 @@ const buildMetrics = (
     { label: 'Blocked Energy', value: formatValue(blockedEnergy ?? '-') },
     { label: 'Riparian Animals', value: formatValue(riparianAnimalCount ?? '-') },
     { label: 'Sheltered Animals', value: formatValue(shelteredAnimalCount ?? '-') },
+    { label: 'Far Animals', value: formatValue(farAnimalCount ?? '-') },
+    { label: 'Open Plain Animals', value: formatValue(openPlainAnimalCount ?? '-') },
     { label: 'Riparian Biomass', value: formatMetricNumber(riparianBiomass) },
     { label: 'Far Biomass', value: formatMetricNumber(farBiomass) },
     { label: 'Riparian Moisture', value: formatMetricNumber(riparianMoisture) },

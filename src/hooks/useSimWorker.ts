@@ -10,7 +10,7 @@ import type {
   WorkerToMainMessage,
 } from "../worker/protocol";
 
-const METRICS_HISTORY_LIMIT = 600;
+const METRICS_HISTORY_LIMIT = 1440;
 
 export type SimWorkerCommands = {
   init: (scenario?: ScenarioConfig, params?: SimParams) => void;

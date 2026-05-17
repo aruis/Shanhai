@@ -24,6 +24,7 @@ interface MetricHistoryPoint {
   animalDeaths?: number | null;
   juvenileAnimalCount?: number | null;
   reproductiveAnimalCount?: number | null;
+  shelteredAnimalCount?: number | null;
 }
 
 interface MetricsPanelProps {
@@ -40,6 +41,7 @@ const seriesConfig = [
   { key: 'animalCount', label: 'Animals', color: '#f2c75c' },
   { key: 'meanAnimalEnergy', label: 'Energy', color: '#e9785f' },
   { key: 'reproductiveAnimalCount', label: 'Reproductive', color: '#d78fff' },
+  { key: 'shelteredAnimalCount', label: 'Sheltered', color: '#8ecf8a' },
 ] satisfies Array<{
   key: keyof MetricHistoryPoint;
   label: string;
@@ -69,7 +71,7 @@ export function MetricsPanel({ metrics, history }: MetricsPanelProps) {
             preserveAspectRatio="none"
             style={chartStyle}
             role="img"
-            aria-label="Hydrology metric history"
+            aria-label="Eco-CA multi-season metric history"
           >
             <path d={chart.gridPath} stroke="#1d2a36" strokeWidth="1" />
             {seriesConfig.map((series) => (
@@ -104,7 +106,7 @@ const buildChart = (history: MetricHistoryPoint[]) => {
   const padding = { top: 8, right: 8, bottom: 12, left: 8 };
   const innerWidth = width - padding.left - padding.right;
   const innerHeight = height - padding.top - padding.bottom;
-  const recent = history.slice(-120);
+  const recent = history.slice(-720);
 
   const paths = Object.fromEntries(
     seriesConfig.map((series) => {

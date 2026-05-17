@@ -83,6 +83,8 @@ export const stableDefaultParams: Params = {
   animalWoodyShelterCostMultiplier: 0.45,
   animalThirstDecay: 0.006,
   animalThirstCritical: 0.38,
+  animalSoilMoistureDrinkThreshold: 0.08,
+  animalSoilMoistureDrinkRate: 0.12,
   animalHungerThreshold: 0.72,
   animalAutumnForageThreshold: 1.18,
   animalAutumnGrazeRateMultiplier: 1.35,

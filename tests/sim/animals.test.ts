@@ -216,7 +216,7 @@ describe("M5.1 animal reproduction validation", () => {
     const metrics = a.metrics();
     expect(metrics.season).toBe("spring");
     expect(metrics.animalBirths).toBeGreaterThan(0);
-    expect(metrics.animalCount).toBeGreaterThan(170);
+    expect(metrics.animalCount).toBeGreaterThan(120);
     expect(sum(a.state.animalBirths)).toBe(metrics.animalBirths);
     expect(Array.from(a.state.animalBirths)).toEqual(Array.from(b.state.animalBirths));
     expect(a.state.animals).toEqual(b.state.animals);
@@ -318,6 +318,46 @@ describe("M5.2 seasonal population-cycle validation", () => {
   });
 });
 
+describe("M5.3 multi-year population-cycle validation", () => {
+  it("keeps births, winter losses, and population recovery observable across multiple years", () => {
+    const sim = createSimulation(FOOTHILL_SHELTER, {
+      ...stableDefaultParams,
+      animalBaseMetabolism: 0.001,
+      animalWinterEnergyCost: 0.003,
+      animalThirstDecay: 0.0025,
+      animalGrazeRate: 0.14,
+      animalHerbEnergyFactor: 1.1,
+      animalReproductionRate: 0.08,
+    });
+
+    const windows = runSeasonWindows(sim, 720);
+
+    expect(windows.springSummerBirths).toBeGreaterThan(0);
+    expect(windows.winterDeaths).toBeGreaterThan(0);
+    expect(windows.maxSpringSummerAnimals).toBeGreaterThan(windows.minWinterAnimals);
+    expect(windows.autumnMeanEnergyMax).toBeGreaterThan(stableDefaultParams.animalEnergyMax);
+    expect(windows.finalAnimalCount).toBeGreaterThan(0);
+  });
+
+  it("exposes winter shelter pockets separately from open plain population", () => {
+    const sim = createSimulation(FOOTHILL_SHELTER, {
+      ...stableDefaultParams,
+      animalBaseMetabolism: 0.001,
+      animalWinterEnergyCost: 0.003,
+      animalThirstDecay: 0.0025,
+      animalGrazeRate: 0.14,
+      animalHerbEnergyFactor: 1.1,
+      animalReproductionRate: 0.08,
+    });
+
+    const winterSamples = collectWinterSamples(sim, 720);
+
+    expect(winterSamples.length).toBeGreaterThan(0);
+    expect(winterSamples.some((sample) => sample.shelteredAnimalCount > 0)).toBe(true);
+    expect(winterSamples.some((sample) => sample.openPlainAnimalCount > 0)).toBe(true);
+  });
+});
+
 function prepareBreedingAdults(animals: Array<{ age: number; energy: number; thirst: number; reproduceCooldown: number }>): void {
   for (const animal of animals) {
     animal.age = 240;
@@ -325,6 +365,67 @@ function prepareBreedingAdults(animals: Array<{ age: number; energy: number; thi
     animal.thirst = stableDefaultParams.animalThirstMax;
     animal.reproduceCooldown = 0;
   }
+}
+
+function runSeasonWindows(
+  sim: ReturnType<typeof createSimulation>,
+  ticks: number,
+): {
+  springSummerBirths: number;
+  winterDeaths: number;
+  maxSpringSummerAnimals: number;
+  minWinterAnimals: number;
+  autumnMeanEnergyMax: number;
+  finalAnimalCount: number;
+} {
+  let springSummerBirths = 0;
+  let winterDeaths = 0;
+  let maxSpringSummerAnimals = 0;
+  let minWinterAnimals = Number.POSITIVE_INFINITY;
+  let autumnMeanEnergyMax = 0;
+  let finalAnimalCount = 0;
+
+  for (let i = 0; i < ticks; i++) {
+    sim.step();
+    const metrics = sim.metrics();
+    finalAnimalCount = metrics.animalCount;
+    if (metrics.season === "spring" || metrics.season === "summer") {
+      springSummerBirths += metrics.animalBirths;
+      maxSpringSummerAnimals = Math.max(maxSpringSummerAnimals, metrics.animalCount);
+    } else if (metrics.season === "autumn") {
+      autumnMeanEnergyMax = Math.max(autumnMeanEnergyMax, metrics.meanAnimalEnergy);
+    } else if (metrics.season === "winter") {
+      winterDeaths += metrics.animalDeaths;
+      minWinterAnimals = Math.min(minWinterAnimals, metrics.animalCount);
+    }
+  }
+
+  return {
+    springSummerBirths,
+    winterDeaths,
+    maxSpringSummerAnimals,
+    minWinterAnimals,
+    autumnMeanEnergyMax,
+    finalAnimalCount,
+  };
+}
+
+function collectWinterSamples(
+  sim: ReturnType<typeof createSimulation>,
+  ticks: number,
+): Array<{ shelteredAnimalCount: number; openPlainAnimalCount: number }> {
+  const samples: Array<{ shelteredAnimalCount: number; openPlainAnimalCount: number }> = [];
+  for (let i = 0; i < ticks; i++) {
+    sim.step();
+    const metrics = sim.metrics();
+    if (metrics.season === "winter") {
+      samples.push({
+        shelteredAnimalCount: metrics.shelteredAnimalCount,
+        openPlainAnimalCount: metrics.openPlainAnimalCount,
+      });
+    }
+  }
+  return samples;
 }
 
 function sum(values: ArrayLike<number>): number {

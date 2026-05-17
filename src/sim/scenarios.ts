@@ -295,7 +295,7 @@ export function foothillShelter(seed = 505): SimState {
       y >= 10 &&
       y <= 54 &&
       Math.abs(y - foothillShelterRiverY(x)) <= 13,
-    170,
+    120,
   );
 
   return finalizeOceanSurface(state);
