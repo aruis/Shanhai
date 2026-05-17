@@ -63,6 +63,11 @@ export type SimMetrics = {
   shelteredAnimalCount?: number;
   farAnimalCount?: number;
   openPlainAnimalCount?: number;
+  animalPocketCount?: number;
+  occupiedAnimalPocketCount?: number;
+  largestAnimalPocketPopulation?: number;
+  secondAnimalPocketPopulation?: number;
+  thirdAnimalPocketPopulation?: number;
   [key: string]: unknown;
 };
 

@@ -241,6 +241,11 @@ export interface Metrics {
   shelteredAnimalCount: number;
   farAnimalCount: number;
   openPlainAnimalCount: number;
+  animalPocketCount: number;
+  occupiedAnimalPocketCount: number;
+  largestAnimalPocketPopulation: number;
+  secondAnimalPocketPopulation: number;
+  thirdAnimalPocketPopulation: number;
   herbToWoodyRatio: number;
   grassCoverage: number;
   woodyCoverage: number;

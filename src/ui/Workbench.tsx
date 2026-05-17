@@ -67,6 +67,7 @@ const scenarios = [
   { id: 'basinSpill', label: 'Basin Spillway' },
   { id: 'riverValleyGrassland', label: 'River Valley Grassland' },
   { id: 'foothillShelter', label: 'Foothill Shelter' },
+  { id: 'splitPlainPockets', label: 'Split Plain Pockets' },
 ];
 
 const initialLayers: LayerState = {
@@ -874,6 +875,16 @@ const buildMetricsHistory = (
       'reproductiveAnimals',
     ]),
     shelteredAnimalCount: historyValue(item, ['shelteredAnimalCount', 'shelteredAnimals']),
+    largestAnimalPocketPopulation: historyValue(item, [
+      'largestAnimalPocketPopulation',
+      'largestAnimalPocket',
+      'primaryAnimalPocket',
+    ]),
+    secondAnimalPocketPopulation: historyValue(item, [
+      'secondAnimalPocketPopulation',
+      'secondAnimalPocket',
+      'secondaryAnimalPocket',
+    ]),
     grassCoverage:
       historyValue(item, [
         'grassCoverage',
@@ -1078,6 +1089,23 @@ const buildMetrics = (
     'openPlainAnimals',
     'plainAnimals',
   ]);
+  const animalPocketCount = metricValue(sourceMetrics, ['animalPocketCount', 'animalPockets']);
+  const occupiedAnimalPocketCount = metricValue(sourceMetrics, [
+    'occupiedAnimalPocketCount',
+    'occupiedAnimalPockets',
+  ]);
+  const largestAnimalPocketPopulation = metricValue(sourceMetrics, [
+    'largestAnimalPocketPopulation',
+    'largestAnimalPocket',
+  ]);
+  const secondAnimalPocketPopulation = metricValue(sourceMetrics, [
+    'secondAnimalPocketPopulation',
+    'secondAnimalPocket',
+  ]);
+  const thirdAnimalPocketPopulation = metricValue(sourceMetrics, [
+    'thirdAnimalPocketPopulation',
+    'thirdAnimalPocket',
+  ]);
   const grassland = buildGrasslandSignal(snapshot);
   const grassCoverage =
     metricValue(sourceMetrics, [
@@ -1219,6 +1247,11 @@ const buildMetrics = (
     { label: 'Sheltered Animals', value: formatValue(shelteredAnimalCount ?? '-') },
     { label: 'Far Animals', value: formatValue(farAnimalCount ?? '-') },
     { label: 'Open Plain Animals', value: formatValue(openPlainAnimalCount ?? '-') },
+    { label: 'Animal Pockets', value: formatValue(animalPocketCount ?? '-') },
+    { label: 'Occupied Pockets', value: formatValue(occupiedAnimalPocketCount ?? '-') },
+    { label: 'Largest Pocket', value: formatValue(largestAnimalPocketPopulation ?? '-') },
+    { label: 'Second Pocket', value: formatValue(secondAnimalPocketPopulation ?? '-') },
+    { label: 'Third Pocket', value: formatValue(thirdAnimalPocketPopulation ?? '-') },
     { label: 'Riparian Biomass', value: formatMetricNumber(riparianBiomass) },
     { label: 'Far Biomass', value: formatMetricNumber(farBiomass) },
     { label: 'Riparian Moisture', value: formatMetricNumber(riparianMoisture) },

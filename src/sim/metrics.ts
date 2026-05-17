@@ -5,6 +5,7 @@ import { stableDefaultParams } from "./params";
 export function collectMetrics(state: SimState, params = stableDefaultParams): Metrics {
   const components = updateHydrologyComponents(state);
   const grassland = collectGrasslandMetrics(state);
+  const animalPockets = collectAnimalPocketMetrics(state);
   let totalWater = 0;
   let totalMoisture = 0;
   let totalNutrient = 0;
@@ -159,6 +160,11 @@ export function collectMetrics(state: SimState, params = stableDefaultParams): M
     shelteredAnimalCount: grassland.shelteredAnimalCount,
     farAnimalCount: grassland.farAnimalCount,
     openPlainAnimalCount: grassland.openPlainAnimalCount,
+    animalPocketCount: animalPockets.animalPocketCount,
+    occupiedAnimalPocketCount: animalPockets.occupiedAnimalPocketCount,
+    largestAnimalPocketPopulation: animalPockets.largestAnimalPocketPopulation,
+    secondAnimalPocketPopulation: animalPockets.secondAnimalPocketPopulation,
+    thirdAnimalPocketPopulation: animalPockets.thirdAnimalPocketPopulation,
     herbToWoodyRatio: ratio(herbCells, woodyCells),
     meanMoisture: totalMoisture / state.moisture.length,
     meanNutrient: totalNutrient / state.nutrient.length,
@@ -195,6 +201,70 @@ export function collectMetrics(state: SimState, params = stableDefaultParams): M
     woodyShelterCells: grassland.woodyShelterCells,
     winterShelterCells: grassland.winterShelterCells,
   };
+}
+
+interface AnimalPocketMetrics {
+  animalPocketCount: number;
+  occupiedAnimalPocketCount: number;
+  largestAnimalPocketPopulation: number;
+  secondAnimalPocketPopulation: number;
+  thirdAnimalPocketPopulation: number;
+}
+
+function collectAnimalPocketMetrics(state: SimState): AnimalPocketMetrics {
+  const component = new Int32Array(state.base.length).fill(-1);
+  const populations: number[] = [];
+  let componentId = 0;
+
+  for (let i = 0; i < state.base.length; i++) {
+    if (component[i] >= 0 || !isAnimalHabitatCell(state, i)) continue;
+    const population = floodAnimalPocket(state, i, componentId, component);
+    populations.push(population);
+    componentId++;
+  }
+
+  populations.sort((a, b) => b - a);
+
+  return {
+    animalPocketCount: populations.length,
+    occupiedAnimalPocketCount: populations.filter((count) => count > 0).length,
+    largestAnimalPocketPopulation: populations[0] ?? 0,
+    secondAnimalPocketPopulation: populations[1] ?? 0,
+    thirdAnimalPocketPopulation: populations[2] ?? 0,
+  };
+}
+
+function floodAnimalPocket(
+  state: SimState,
+  start: number,
+  componentId: number,
+  component: Int32Array,
+): number {
+  const stack = [start];
+  component[start] = componentId;
+  let population = 0;
+
+  while (stack.length) {
+    const current = stack.pop() ?? start;
+    population += state.animalCount[current];
+    const x = current % state.width;
+    const y = Math.floor(current / state.width);
+
+    for (let dy = -1; dy <= 1; dy++) {
+      for (let dx = -1; dx <= 1; dx++) {
+        if (dx === 0 && dy === 0) continue;
+        const nx = x + dx;
+        const ny = y + dy;
+        if (nx < 0 || ny < 0 || nx >= state.width || ny >= state.height) continue;
+        const next = ny * state.width + nx;
+        if (component[next] >= 0 || !isAnimalHabitatCell(state, next)) continue;
+        component[next] = componentId;
+        stack.push(next);
+      }
+    }
+  }
+
+  return population;
 }
 
 interface GrasslandMetrics {
@@ -291,11 +361,16 @@ function collectGrasslandMetrics(state: SimState): GrasslandMetrics {
 }
 
 function isPlantableLand(state: SimState, index: number): boolean {
+  return isAnimalHabitatCell(state, index);
+}
+
+function isAnimalHabitatCell(state: SimState, index: number): boolean {
   return (
     (state.base[index] === BaseTerrain.PLAIN ||
       state.base[index] === BaseTerrain.LOW_HILL) &&
     state.surface[index] !== Surface.RIVER &&
-    state.surface[index] !== Surface.LAKE
+    state.surface[index] !== Surface.LAKE &&
+    state.surface[index] !== Surface.ICE
   );
 }
 

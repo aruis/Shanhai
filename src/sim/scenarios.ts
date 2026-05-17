@@ -301,12 +301,72 @@ export function foothillShelter(seed = 505): SimState {
   return finalizeOceanSurface(state);
 }
 
+export function splitPlainPockets(seed = 606): SimState {
+  const state = makeState("splitPlainPockets", seed);
+
+  for (let y = 0; y < HEIGHT; y++) {
+    for (let x = 0; x < WIDTH; x++) {
+      let h = 1;
+      if (x < 4 || x >= 60 || y < 3 || y >= 61) h = 0;
+      if (x >= 30 && x <= 34) h = 4;
+      if ((x >= 8 && x <= 18 && y >= 8 && y <= 55) || (x >= 45 && x <= 55 && y >= 8 && y <= 55)) h = 2;
+      setCell(state, x, y, h);
+
+      const i = idx(x, y, WIDTH);
+      if (h === 1 && x >= 5 && x < 59 && y >= 5 && y < 59) {
+        state.moisture[i] = 0.09;
+        state.nutrient[i] = Math.max(state.nutrient[i], 0.56);
+      } else if (h === 2) {
+        state.moisture[i] = 0.06;
+        state.nutrient[i] = Math.max(state.nutrient[i], 0.42);
+      }
+    }
+  }
+
+  const leftSpring = idx(11, 31, WIDTH);
+  const rightSpring = idx(52, 31, WIDTH);
+  state.springs.push({ index: leftSpring, output: 1.6 });
+  state.springs.push({ index: rightSpring, output: 1.4 });
+  state.water[leftSpring] = 0.45;
+  state.water[rightSpring] = 0.4;
+  state.moisture[leftSpring] = 0.32;
+  state.moisture[rightSpring] = 0.3;
+
+  seedInitialHerbs(
+    state,
+    (x, y) =>
+      ((x >= 5 && x <= 27) || (x >= 37 && x <= 58)) &&
+      y >= 7 &&
+      y <= 56,
+    { density: 0.2, biomass: 0.13, maturity: 0.16 },
+  );
+  seedInitialWoodies(
+    state,
+    (x, y) =>
+      ((x >= 8 && x <= 18) || (x >= 45 && x <= 55)) &&
+      y >= 8 &&
+      y <= 55,
+    { density: 0.1, biomass: 0.26, maturity: 0.22 },
+  );
+  seedInitialAnimals(
+    state,
+    (x, y) =>
+      ((x >= 6 && x <= 27) || (x >= 37 && x <= 57)) &&
+      y >= 9 &&
+      y <= 54,
+    150,
+  );
+
+  return finalizeOceanSurface(state);
+}
+
 export const scenarios = {
   slopeToOcean,
   basinLake,
   basinSpill,
   riverValleyGrassland,
   foothillShelter,
+  splitPlainPockets,
 };
 
 export type ScenarioName = keyof typeof scenarios;

@@ -4,6 +4,7 @@ import { createSimulation } from "../../src/sim/simulation";
 import { BaseTerrain, PlantType, Surface } from "../../src/sim/types";
 
 const FOOTHILL_SHELTER = "foothillShelter";
+const SPLIT_PLAIN_POCKETS = "splitPlainPockets";
 
 describe("M4.1 animal survival validation", () => {
   it("seeds herbivores into the foothill shelter scene deterministically", () => {
@@ -358,6 +359,52 @@ describe("M5.3 multi-year population-cycle validation", () => {
   });
 });
 
+describe("M5.4 plain-pocket population validation", () => {
+  it("exposes isolated animal pocket populations split by mountains", () => {
+    const sim = createSimulation(SPLIT_PLAIN_POCKETS, stableDefaultParams);
+    const metrics = sim.metrics();
+
+    expect(metrics.animalPocketCount).toBeGreaterThanOrEqual(2);
+    expect(metrics.occupiedAnimalPocketCount).toBeGreaterThanOrEqual(2);
+    expect(metrics.largestAnimalPocketPopulation).toBeGreaterThan(0);
+    expect(metrics.secondAnimalPocketPopulation).toBeGreaterThan(0);
+    expect(
+      metrics.largestAnimalPocketPopulation +
+        metrics.secondAnimalPocketPopulation +
+        metrics.thirdAnimalPocketPopulation,
+    ).toBeLessThanOrEqual(metrics.animalCount);
+  });
+
+  it("keeps pocket population curves deterministic across seasonal windows", () => {
+    const a = createSimulation(SPLIT_PLAIN_POCKETS, {
+      ...stableDefaultParams,
+      animalBaseMetabolism: 0.001,
+      animalWinterEnergyCost: 0.003,
+      animalThirstDecay: 0.0025,
+      animalGrazeRate: 0.14,
+      animalHerbEnergyFactor: 1.1,
+      animalReproductionRate: 0.08,
+    });
+    const b = createSimulation(SPLIT_PLAIN_POCKETS, {
+      ...stableDefaultParams,
+      animalBaseMetabolism: 0.001,
+      animalWinterEnergyCost: 0.003,
+      animalThirstDecay: 0.0025,
+      animalGrazeRate: 0.14,
+      animalHerbEnergyFactor: 1.1,
+      animalReproductionRate: 0.08,
+    });
+
+    const aSeries = collectPocketSeries(a, 360);
+    const bSeries = collectPocketSeries(b, 360);
+
+    expect(aSeries).toEqual(bSeries);
+    expect(aSeries.some((sample) => sample.pocket1 > 0 && sample.pocket2 > 0)).toBe(true);
+    expect(aSeries.at(-1)?.births).toBeGreaterThan(0);
+    expect(aSeries.at(-1)?.deaths).toBeGreaterThan(0);
+  });
+});
+
 function prepareBreedingAdults(animals: Array<{ age: number; energy: number; thirst: number; reproduceCooldown: number }>): void {
   for (const animal of animals) {
     animal.age = 240;
@@ -365,6 +412,31 @@ function prepareBreedingAdults(animals: Array<{ age: number; energy: number; thi
     animal.thirst = stableDefaultParams.animalThirstMax;
     animal.reproduceCooldown = 0;
   }
+}
+
+function collectPocketSeries(
+  sim: ReturnType<typeof createSimulation>,
+  ticks: number,
+): Array<{ tick: number; season: string; pocket1: number; pocket2: number; births: number; deaths: number }> {
+  const samples = [];
+  let births = 0;
+  let deaths = 0;
+  for (let i = 0; i < ticks; i++) {
+    sim.step();
+    const metrics = sim.metrics();
+    births += metrics.animalBirths;
+    deaths += metrics.animalDeaths;
+    if (i % 30 !== 0) continue;
+    samples.push({
+      tick: metrics.tick,
+      season: metrics.season,
+      pocket1: metrics.largestAnimalPocketPopulation,
+      pocket2: metrics.secondAnimalPocketPopulation,
+      births,
+      deaths,
+    });
+  }
+  return samples;
 }
 
 function runSeasonWindows(

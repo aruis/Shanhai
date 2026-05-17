@@ -18,9 +18,9 @@ The current prototype focuses on the hydrology-to-grass ecology loop:
 
 ## Current Milestone
 
-### M5.3: Multi-Year Population Cycle Validation
+### M5.4: Plain Pocket Population Curves
 
-M2 hydrology-to-grass behavior is implemented and protected by validation coverage. M3 added woody plants and a stable foothill shelter scenario. M4 made one local-vision herbivore population observable and diagnosable. M5.3 validates seasonal population cycles across multiple years:
+M2 hydrology-to-grass behavior is implemented and protected by validation coverage. M3 added woody plants and a stable foothill shelter scenario. M4 made one local-vision herbivore population observable and diagnosable. M5.4 adds terrain-split plain pocket diagnostics:
 
 - per-cell hydrology budget inspection
 - flow direction arrows
@@ -40,6 +40,7 @@ M2 hydrology-to-grass behavior is implemented and protected by validation covera
 - M5.1 herbivore sex, age, reproduction cooldown, spring/summer birth checks, birth layer/metric/inspector output, and deterministic reproduction tests
 - M5.2 autumn forage/storage behavior, autumn/winter reserve capacity, juvenile/adult/reproductive animal metrics, and animal energy/reproductive trend lines for seasonal diagnosis
 - M5.3 soil-moisture drinking, lower foothill animal seed pressure, low-hill shelter seeking bias, far/open-plain animal metrics, longer 720-tick metric chart window, and multi-year cycle validation tests
+- M5.4 mountain-split plain pocket scenario, animal habitat connected-component metrics, largest/second/third pocket population diagnostics, pocket trend lines, and deterministic seasonal pocket-series tests
 
 ## Roadmap
 
@@ -47,7 +48,7 @@ M2 hydrology-to-grass behavior is implemented and protected by validation covera
 - **M2 Moisture, Nutrients, and Herbaceous Plants:** add soil moisture, nutrients, river-valley enrichment, grass growth, seeding, winter die-off, and nutrient return. Validation coverage is in place.
 - **M3 Woody Plants and Terrain Zoning:** add slow-growing woody plants, low-hill forest bands, plant competition, and stable foothill shelter signals for future animals. M3.2 is complete.
 - **M4 Animal Survival:** add local herbivore movement, thirst, hunger, grazing, death, nutrient return, and behavior debugging. M4.3 is complete enough for the current workbench.
-- **M5 Reproduction and Seasonal Population Cycles:** add age, sex, reproduction cooldown, autumn energy storage, winter shelter, and population oscillation metrics. M5.3 validates spring/summer births, winter losses, autumn energy reserve, and pocket-region diagnostics across multi-season windows; richer pocket tuning remains ongoing.
+- **M5 Reproduction and Seasonal Population Cycles:** add age, sex, reproduction cooldown, autumn energy storage, winter shelter, and population oscillation metrics. M5.4 validates mountain-split plain pockets and per-pocket animal curves; winter survivor distance diagnostics remain pending.
 
 ## Validation Scenarios
 
@@ -59,6 +60,7 @@ The first milestone uses fixed `64x64` scenarios:
 - `riverValleyGrassland`: a stable river should cross plantable grassland, with higher riparian moisture, nutrients, and herb biomass than distant plantable land.
 - M3.1 woody checks reuse `riverValleyGrassland` to validate deterministic woody state, exclusion from water/ocean/mid/high mountains, and stronger low-hill/foothill woody signal than distant plains.
 - `foothillShelter`: a foothill meadow and low-hill woodland scenario for M3.2-M5.3, validating deterministic setup, multi-year woody persistence, bounded low-hill woody coverage, persistent riparian grass, shelter metrics, deterministic local herbivore survival, behavior explanation layers, movement diagnostics, limited reproduction, autumn storage diagnostics, and multi-year population-cycle signals.
+- `splitPlainPockets`: a mountain-divided plain scenario for M5.4, validating that animal habitat pockets are counted independently and that the leading pocket populations remain deterministic across seasonal windows.
 
 ## Tech Stack
 

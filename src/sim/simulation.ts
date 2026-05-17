@@ -261,6 +261,11 @@ function resolveScenarioName(input: ScenarioInput): ScenarioName {
     case "foothill-shelter-validation":
     case "woodland-edge":
       return "foothillShelter";
+    case "splitPlainPockets":
+    case "split-plain-pockets":
+    case "plain-pockets":
+    case "mountain-split-plains":
+      return "splitPlainPockets";
     default:
       return "slopeToOcean";
   }
