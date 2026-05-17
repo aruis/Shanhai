@@ -2,7 +2,7 @@
 
 Shanhai is a web-based Eco-CA workbench for exploring semi-3D ecological cellular automata.
 
-The current prototype focuses on the hydrology-to-grass ecology loop:
+The current prototype focuses on the hydrology-to-vegetation-to-herbivore ecology loop:
 
 - terrain and surface layers
 - spring-fed water injection
@@ -12,6 +12,9 @@ The current prototype focuses on the hydrology-to-grass ecology loop:
 - soil moisture and nutrients
 - riparian moisture and nutrient enrichment around rivers and lakes
 - herbaceous growth, seeding, and winter die-off
+- slow-growing woody plants and winter shelter
+- local herbivore movement, grazing, reproduction, and seasonal population cycles
+- terrain-split animal pocket diagnostics
 - fixed validation scenarios
 - PixiJS grid visualization
 - Web Worker simulation loop

@@ -364,15 +364,15 @@ describe("M5.4 plain-pocket population validation", () => {
     const sim = createSimulation(SPLIT_PLAIN_POCKETS, stableDefaultParams);
     const metrics = sim.metrics();
 
-    expect(metrics.animalPocketCount).toBeGreaterThanOrEqual(2);
-    expect(metrics.occupiedAnimalPocketCount).toBeGreaterThanOrEqual(2);
+    expect(metrics.animalPocketCount).toBe(2);
+    expect(metrics.occupiedAnimalPocketCount).toBe(2);
     expect(metrics.largestAnimalPocketPopulation).toBeGreaterThan(0);
     expect(metrics.secondAnimalPocketPopulation).toBeGreaterThan(0);
+    expect(metrics.thirdAnimalPocketPopulation).toBe(0);
     expect(
       metrics.largestAnimalPocketPopulation +
-        metrics.secondAnimalPocketPopulation +
-        metrics.thirdAnimalPocketPopulation,
-    ).toBeLessThanOrEqual(metrics.animalCount);
+        metrics.secondAnimalPocketPopulation,
+    ).toBe(metrics.animalCount);
   });
 
   it("keeps pocket population curves deterministic across seasonal windows", () => {

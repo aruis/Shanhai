@@ -44,8 +44,8 @@ const seriesConfig = [
   { key: 'meanAnimalEnergy', label: 'Energy', color: '#e9785f' },
   { key: 'reproductiveAnimalCount', label: 'Reproductive', color: '#d78fff' },
   { key: 'shelteredAnimalCount', label: 'Sheltered', color: '#8ecf8a' },
-  { key: 'largestAnimalPocketPopulation', label: 'Pocket 1', color: '#f09a5a' },
-  { key: 'secondAnimalPocketPopulation', label: 'Pocket 2', color: '#8bb8ff' },
+  { key: 'largestAnimalPocketPopulation', label: 'Largest pocket', color: '#f09a5a' },
+  { key: 'secondAnimalPocketPopulation', label: 'Second pocket', color: '#8bb8ff' },
 ] satisfies Array<{
   key: keyof MetricHistoryPoint;
   label: string;
@@ -224,6 +224,9 @@ const metricsGridStyle = {
   display: 'grid',
   gridTemplateColumns: 'repeat(4, minmax(92px, 1fr))',
   gap: 8,
+  maxHeight: 132,
+  overflowY: 'auto',
+  paddingRight: 4,
 } satisfies CSSProperties;
 
 const metricStyle = {
