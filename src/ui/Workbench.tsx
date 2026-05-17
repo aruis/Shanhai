@@ -865,6 +865,14 @@ const buildMetricsHistory = (
       'aliveAnimals',
       'herbivores',
     ]),
+    meanAnimalEnergy: historyValue(item, ['meanAnimalEnergy', 'avgAnimalEnergy', 'animalEnergy']),
+    animalBirths: historyValue(item, ['animalBirths', 'births']),
+    animalDeaths: historyValue(item, ['animalDeaths', 'deadAnimals']),
+    juvenileAnimalCount: historyValue(item, ['juvenileAnimalCount', 'juvenileAnimals']),
+    reproductiveAnimalCount: historyValue(item, [
+      'reproductiveAnimalCount',
+      'reproductiveAnimals',
+    ]),
     grassCoverage:
       historyValue(item, [
         'grassCoverage',
@@ -1024,6 +1032,12 @@ const buildMetrics = (
   ]);
   const animalDeaths = metricValue(sourceMetrics, ['animalDeaths', 'deadAnimals']);
   const animalBirths = metricValue(sourceMetrics, ['animalBirths', 'births']);
+  const juvenileAnimalCount = metricValue(sourceMetrics, ['juvenileAnimalCount', 'juvenileAnimals']);
+  const adultAnimalCount = metricValue(sourceMetrics, ['adultAnimalCount', 'adultAnimals']);
+  const reproductiveAnimalCount = metricValue(sourceMetrics, [
+    'reproductiveAnimalCount',
+    'reproductiveAnimals',
+  ]);
   const seekingWaterAnimals = metricValue(sourceMetrics, ['seekingWaterAnimals']);
   const seekingFoodAnimals = metricValue(sourceMetrics, ['seekingFoodAnimals']);
   const seekingShelterAnimals = metricValue(sourceMetrics, ['seekingShelterAnimals']);
@@ -1181,6 +1195,9 @@ const buildMetrics = (
     { label: 'Grazed Biomass', value: formatMetricNumber(totalGrazedBiomass, 3) },
     { label: 'Animal Deaths', value: formatValue(animalDeaths ?? '-') },
     { label: 'Animal Births', value: formatValue(animalBirths ?? '-') },
+    { label: 'Juvenile Animals', value: formatValue(juvenileAnimalCount ?? '-') },
+    { label: 'Adult Animals', value: formatValue(adultAnimalCount ?? '-') },
+    { label: 'Reproductive Animals', value: formatValue(reproductiveAnimalCount ?? '-') },
     { label: 'Seeking Water', value: formatValue(seekingWaterAnimals ?? '-') },
     { label: 'Seeking Food', value: formatValue(seekingFoodAnimals ?? '-') },
     { label: 'Seeking Shelter', value: formatValue(seekingShelterAnimals ?? '-') },

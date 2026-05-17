@@ -42,6 +42,9 @@ export type SimMetrics = {
   deadAnimals?: number;
   animalDeaths?: number;
   animalBirths?: number;
+  juvenileAnimalCount?: number;
+  adultAnimalCount?: number;
+  reproductiveAnimalCount?: number;
   meanAnimalEnergy?: number;
   meanAnimalThirst?: number;
   totalGrazedBiomass?: number;

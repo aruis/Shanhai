@@ -29,9 +29,10 @@ export function stepAnimals(state: SimState, params: Params): SimState {
   for (const animal of state.animals) {
     if (!animal.alive) continue;
 
+    const energyCapacity = animalEnergyCapacity(season, params);
     animal.age++;
     animal.reproduceCooldown = Math.max(0, animal.reproduceCooldown - 1);
-    animal.energy = clamp(animal.energy - params.animalBaseMetabolism, 0, params.animalEnergyMax);
+    animal.energy = clamp(animal.energy - params.animalBaseMetabolism, 0, energyCapacity);
     animal.thirst = clamp(animal.thirst - params.animalThirstDecay, 0, params.animalThirstMax);
 
     if (season === "winter") {
@@ -41,7 +42,7 @@ export function stepAnimals(state: SimState, params: Params): SimState {
       animal.energy = clamp(
         animal.energy - params.animalWinterEnergyCost * shelterMultiplier,
         0,
-        params.animalEnergyMax,
+        energyCapacity,
       );
     }
 
@@ -65,7 +66,7 @@ export function stepAnimals(state: SimState, params: Params): SimState {
     blockedIllegal,
     blockedEnergy,
   );
-  settleDrinkAndGraze(state, params, deathReturns, deaths, grazing);
+  settleDrinkAndGraze(state, params, season, deathReturns, deaths, grazing);
   settleReproduction(state, params, season, births);
   commitDeathReturns(state, params, deathReturns);
   rebuildAnimalLayers(
@@ -97,6 +98,13 @@ function buildIntent(
   }
 
   if (animal.energy < params.animalHungerThreshold) {
+    if (state.plantType[animal.index] === PlantType.HERB && state.plantBiomass[animal.index] > 0.03) {
+      return { kind: "stay", animal, reason: AnimalIntentType.GRAZE };
+    }
+    return bestMoveIntent(state, params, animal, AnimalIntentType.SEEK_FOOD, foodSeekingScore);
+  }
+
+  if (season === "autumn" && animal.energy < params.animalAutumnForageThreshold) {
     if (state.plantType[animal.index] === PlantType.HERB && state.plantBiomass[animal.index] > 0.03) {
       return { kind: "stay", animal, reason: AnimalIntentType.GRAZE };
     }
@@ -234,6 +242,7 @@ function arbitrateMovement(
 function settleDrinkAndGraze(
   state: SimState,
   params: Params,
+  season: ReturnType<typeof seasonForTick>,
   deathReturns: Float64Array,
   deaths: Uint16Array,
   grazing: Float64Array,
@@ -260,14 +269,16 @@ function settleDrinkAndGraze(
   }
 
   for (const [index, eaters] of eatersByCell) {
-    const available = Math.min(state.plantBiomass[index], params.animalGrazeRate * eaters.length);
+    const grazeRate =
+      params.animalGrazeRate * (season === "autumn" ? params.animalAutumnGrazeRateMultiplier : 1);
+    const available = Math.min(state.plantBiomass[index], grazeRate * eaters.length);
     if (available <= 0) continue;
     const share = available / eaters.length;
     for (const animal of eaters) {
       animal.energy = clamp(
         animal.energy + share * params.animalHerbEnergyFactor,
         0,
-        params.animalEnergyMax,
+        animalEnergyCapacity(season, params),
       );
     }
     state.plantBiomass[index] = clamp(state.plantBiomass[index] - available, 0, params.herbBiomassMax);
@@ -520,6 +531,13 @@ function moveOrder(state: SimState, animal: Animal): number {
 
 function reproductionOrder(state: SimState, animal: Animal): number {
   return hashUnit(state.seed ^ Math.imul(state.tick + 3, 0x1b873593), animal.id);
+}
+
+function animalEnergyCapacity(season: ReturnType<typeof seasonForTick>, params: Params): number {
+  if (season === "autumn" || season === "winter") {
+    return params.animalEnergyMax * params.animalAutumnEnergyMaxMultiplier;
+  }
+  return params.animalEnergyMax;
 }
 
 function hashUnit(seed: number, index: number): number {

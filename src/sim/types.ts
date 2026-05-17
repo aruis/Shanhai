@@ -182,6 +182,9 @@ export interface Params {
   animalThirstDecay: number;
   animalThirstCritical: number;
   animalHungerThreshold: number;
+  animalAutumnForageThreshold: number;
+  animalAutumnGrazeRateMultiplier: number;
+  animalAutumnEnergyMaxMultiplier: number;
   animalMoistureWeight: number;
   animalAdjacentWaterBonus: number;
   animalDownhillBonus: number;
@@ -213,6 +216,9 @@ export interface Metrics {
   animalCount: number;
   animalDeaths: number;
   animalBirths: number;
+  juvenileAnimalCount: number;
+  adultAnimalCount: number;
+  reproductiveAnimalCount: number;
   meanAnimalEnergy: number;
   meanAnimalThirst: number;
   totalGrazedBiomass: number;

@@ -1,7 +1,8 @@
 import { AnimalIntentType, BaseTerrain, Metrics, PlantType, SimState, Surface } from "./types";
 import { seasonForTick } from "./hydrology";
+import { stableDefaultParams } from "./params";
 
-export function collectMetrics(state: SimState): Metrics {
+export function collectMetrics(state: SimState, params = stableDefaultParams): Metrics {
   const components = updateHydrologyComponents(state);
   const grassland = collectGrasslandMetrics(state);
   let totalWater = 0;
@@ -17,6 +18,9 @@ export function collectMetrics(state: SimState): Metrics {
   let animalDeaths = 0;
   let animalBirths = 0;
   let animalGrazing = 0;
+  let juvenileAnimalCount = 0;
+  let adultAnimalCount = 0;
+  let reproductiveAnimalCount = 0;
   let thirstyAnimals = 0;
   let hungryAnimals = 0;
   let seekingWaterAnimals = 0;
@@ -105,6 +109,20 @@ export function collectMetrics(state: SimState): Metrics {
     }
   }
 
+  for (const animal of state.animals) {
+    if (!animal.alive) continue;
+    if (animal.age < params.animalAdultAge) juvenileAnimalCount++;
+    else adultAnimalCount++;
+    if (
+      animal.age >= params.animalAdultAge &&
+      animal.reproduceCooldown <= 0 &&
+      animal.energy >= params.animalReproduceEnergyThreshold &&
+      animal.thirst >= params.animalReproduceThirstThreshold
+    ) {
+      reproductiveAnimalCount++;
+    }
+  }
+
   return {
     tick: state.tick,
     season: seasonForTick(state.tick),
@@ -118,6 +136,9 @@ export function collectMetrics(state: SimState): Metrics {
     animalCount,
     animalDeaths,
     animalBirths,
+    juvenileAnimalCount,
+    adultAnimalCount,
+    reproductiveAnimalCount,
     meanAnimalEnergy: regionMean(animalEnergy, animalCount),
     meanAnimalThirst: regionMean(animalThirst, animalCount),
     totalGrazedBiomass: animalGrazing,

@@ -104,10 +104,10 @@ export function createSimulation(
       return state;
     },
     metrics() {
-      return collectMetrics(state);
+      return collectMetrics(state, resolvedParams);
     },
     getMetrics() {
-      return collectMetrics(state);
+      return collectMetrics(state, resolvedParams);
     },
     getSnapshot() {
       return {

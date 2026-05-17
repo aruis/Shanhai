@@ -1,7 +1,7 @@
 import { describe, expect, it } from "vitest";
 import { stableDefaultParams } from "../../src/sim/params";
 import { createSimulation } from "../../src/sim/simulation";
-import { BaseTerrain, Surface } from "../../src/sim/types";
+import { BaseTerrain, PlantType, Surface } from "../../src/sim/types";
 
 const FOOTHILL_SHELTER = "foothillShelter";
 
@@ -197,7 +197,7 @@ describe("M5.1 animal reproduction validation", () => {
   it("creates deterministic spring births when adults have nearby mates and capacity", () => {
     const params = {
       ...stableDefaultParams,
-      animalAdultAge: 0,
+      animalAdultAge: 10,
       animalReproduceCooldownTicks: 30,
       animalReproduceEnergyThreshold: 0.2,
       animalReproduceThirstThreshold: 0.2,
@@ -225,7 +225,7 @@ describe("M5.1 animal reproduction validation", () => {
   it("does not reproduce in winter even under favorable physiology", () => {
     const sim = createSimulation(FOOTHILL_SHELTER, {
       ...stableDefaultParams,
-      animalAdultAge: 0,
+      animalAdultAge: 10,
       animalReproduceCooldownTicks: 30,
       animalReproduceEnergyThreshold: 0.2,
       animalReproduceThirstThreshold: 0.2,
@@ -242,6 +242,79 @@ describe("M5.1 animal reproduction validation", () => {
     expect(metrics.season).toBe("winter");
     expect(metrics.animalBirths).toBe(0);
     expect(sum(sim.state.animalBirths)).toBe(0);
+  });
+});
+
+describe("M5.2 seasonal population-cycle validation", () => {
+  it("turns autumn into a pre-winter forage and storage season", () => {
+    const autumn = createSimulation(FOOTHILL_SHELTER, {
+      ...stableDefaultParams,
+      animalAutumnForageThreshold: 1.5,
+      animalAutumnGrazeRateMultiplier: 1.8,
+      animalAutumnEnergyMaxMultiplier: 1.4,
+    });
+    autumn.step(179);
+    for (const animal of autumn.state.animals) {
+      animal.energy = 1.32;
+      animal.thirst = stableDefaultParams.animalThirstMax;
+      autumn.state.plantType[animal.index] = PlantType.HERB;
+      autumn.state.plantBiomass[animal.index] = stableDefaultParams.herbBiomassMax;
+    }
+
+    autumn.step();
+    const autumnMetrics = autumn.metrics();
+
+    expect(autumnMetrics.season).toBe("autumn");
+    expect(autumnMetrics.seekingFoodAnimals + autumnMetrics.grazingAnimals).toBeGreaterThan(0);
+    expect(autumnMetrics.totalGrazedBiomass).toBeGreaterThan(0);
+    expect(autumnMetrics.meanAnimalEnergy).toBeGreaterThan(stableDefaultParams.animalEnergyMax);
+
+    const spring = createSimulation(FOOTHILL_SHELTER, {
+      ...stableDefaultParams,
+      animalAutumnForageThreshold: 1.5,
+      animalAutumnGrazeRateMultiplier: 1.8,
+      animalAutumnEnergyMaxMultiplier: 1.4,
+    });
+    for (const animal of spring.state.animals) {
+      animal.energy = 1.32;
+      animal.thirst = stableDefaultParams.animalThirstMax;
+      spring.state.plantType[animal.index] = PlantType.HERB;
+      spring.state.plantBiomass[animal.index] = stableDefaultParams.herbBiomassMax;
+    }
+
+    spring.step();
+    const springMetrics = spring.metrics();
+
+    expect(springMetrics.season).toBe("spring");
+    expect(autumnMetrics.seekingFoodAnimals + autumnMetrics.grazingAnimals).toBeGreaterThan(
+      springMetrics.seekingFoodAnimals + springMetrics.grazingAnimals,
+    );
+    expect(autumnMetrics.totalGrazedBiomass / autumnMetrics.animalCount).toBeGreaterThan(
+      springMetrics.totalGrazedBiomass / springMetrics.animalCount,
+    );
+    expect(autumnMetrics.meanAnimalEnergy).toBeGreaterThan(springMetrics.meanAnimalEnergy);
+  });
+
+  it("exports age-cohort metrics for population-cycle diagnosis", () => {
+    const sim = createSimulation(FOOTHILL_SHELTER, {
+      ...stableDefaultParams,
+      animalAdultAge: 10,
+      animalReproduceEnergyThreshold: 0.2,
+      animalReproduceThirstThreshold: 0.2,
+      animalReproductionRate: 1,
+      animalCellCapacity: 8,
+      animalMaxPopulation: 260,
+    });
+    prepareBreedingAdults(sim.state.animals);
+
+    sim.step();
+    const metrics = sim.metrics();
+
+    expect(metrics.animalBirths).toBeGreaterThan(0);
+    expect(metrics.juvenileAnimalCount).toBe(metrics.animalBirths);
+    expect(metrics.adultAnimalCount).toBeGreaterThan(0);
+    expect(metrics.juvenileAnimalCount + metrics.adultAnimalCount).toBe(metrics.animalCount);
+    expect(metrics.reproductiveAnimalCount).toBeLessThanOrEqual(metrics.adultAnimalCount);
   });
 });
 
